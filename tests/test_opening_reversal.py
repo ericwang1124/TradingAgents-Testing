@@ -228,6 +228,43 @@ def date_(year, k):
     return (pd.Timestamp(f"{year}-01-02") + pd.Timedelta(days=k)).date()
 
 
+def test_live_minute_by_minute_detection_matches_backtest():
+    from tradingagents.strategies.opening_reversal.live.executor import detect_now, today_context
+    from tradingagents.strategies.opening_reversal.live.settings import LIVE_PARAMS
+
+    day_bars = _setup_day(TEST_DAY)
+    bars = _history(day_bars)
+    history = bars[bars.index < day_bars.index[0]]
+    expected = find_signal(_last_ctx(bars), LIVE_PARAMS)
+    assert expected is not None
+
+    first = None
+    for m in range(1, 70):  # replay: at minute m, bars 0..m-1 are complete, bar m is forming
+        ctx = today_context(history, day_bars.iloc[:m], day_bars.index[0].date())
+        sig = detect_now(ctx, float(day_bars["open"].iloc[m]), day_bars.index[m])
+        if sig is not None:
+            first = (m, sig)
+            break
+    assert first is not None
+    m, sig = first
+    assert m == expected.entry_idx and sig.signal_idx == expected.signal_idx
+    assert sig.stop == pytest.approx(expected.stop)
+    assert sig.entry_price == pytest.approx(expected.entry_price)
+
+
+def test_live_sizing_and_paper_only_guard():
+    from tradingagents.strategies.opening_reversal.live.alpaca_trading import AlpacaClient
+    from tradingagents.strategies.opening_reversal.live.executor import size_contracts
+
+    # $100k, 0.5% risk = $500; 0.45 delta * $1.00 stop * 100 + $0.02 spread * 100 = $47/contract -> 10
+    assert size_contracts(100_000, 1.0, 1.00, 1.02, 1.0) == 10
+    assert size_contracts(100_000, 1.0, 1.00, 1.02, 0.5) == 5
+    # premium cap: 2% of equity / ($15 * 100) = 1 contract
+    assert size_contracts(100_000, 0.2, 14.9, 15.0, 1.0) == 1
+    with pytest.raises(ValueError):
+        AlpacaClient(trading_url="https://api.alpaca.markets")
+
+
 def test_volume_profile_poc_and_value_area():
     idx = pd.date_range("2024-01-02 09:30", periods=4, freq="1min", tz=NY)
     bars = pd.DataFrame(

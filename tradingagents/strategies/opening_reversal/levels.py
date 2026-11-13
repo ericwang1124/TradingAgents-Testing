@@ -91,8 +91,13 @@ def _session_minutes(bars: pd.DataFrame) -> float:
     return (bars.index[-1] - bars.index[0]).total_seconds() / 60.0
 
 
-def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = None) -> List[DayContext]:
-    """Turn a continuous minute-bar frame into per-session contexts (first session is warm-up)."""
+def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = None,
+                       min_session_minutes: float = 30) -> List[DayContext]:
+    """Turn a continuous minute-bar frame into per-session contexts (first session is warm-up).
+
+    Sessions not longer than ``min_session_minutes`` are skipped (data gaps); live trading passes
+    -1 so that the session in progress gets a context from its first bar.
+    """
     params = params or StrategyParams()
     if bars.empty:
         return []
@@ -111,7 +116,7 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
     daily_hlc: List[tuple] = []     # (high, low, close) of completed sessions
     for day in sorted(rth_by_day):
         rth = rth_by_day[day]
-        if prev is not None and _session_minutes(rth) > 30 and rth.index[0].time() == RTH_OPEN:
+        if prev is not None and _session_minutes(rth) > min_session_minutes and rth.index[0].time() == RTH_OPEN:
             profile = volume_profile(prev, params.profile_bin_pct, params.value_area_share)
             levels = {
                 "prev_close": float(prev["close"].iloc[-1]),

@@ -1,0 +1,110 @@
+{
+  "period": "2019-01-01 to 2026-11-12",
+  "note": "major-event days excluded except in 'major_event_days'",
+  "overall": {
+    "trades": 459,
+    "win_pct": 50.1,
+    "avg_R": -0.02,
+    "total_R": -9.3
+  },
+  "major_event_days": {
+    "trades": 113,
+    "win_pct": 46.9,
+    "avg_R": -0.09,
+    "total_R": -10.2
+  },
+  "other_days": {
+    "trades": 459,
+    "win_pct": 50.1,
+    "avg_R": -0.02,
+    "total_R": -9.3
+  },
+  "by_regime": {
+    "down/vix15-20": {
+      "trades": 31,
+      "win_pct": 32.3,
+      "avg_R": -0.36,
+      "total_R": -11.1
+    },
+    "down/vix<15": {
+      "trades": 3,
+      "win_pct": 66.7,
+      "avg_R": 0.302,
+      "total_R": 0.9
+    },
+    "down/vix>=20": {
+      "trades": 101,
+      "win_pct": 52.5,
+      "avg_R": 0.029,
+      "total_R": 2.9
+    },
+    "up/vix15-20": {
+      "trades": 152,
+      "win_pct": 52.0,
+      "avg_R": 0.017,
+      "total_R": 2.6
+    },
+    "up/vix<15": {
+      "trades": 78,
+      "win_pct": 51.3,
+      "avg_R": -0.0,
+      "total_R": -0.0
+    },
+    "up/vix>=20": {
+      "trades": 94,
+      "win_pct": 48.9,
+      "avg_R": -0.048,
+      "total_R": -4.5
+    }
+  },
+  "by_year": {
+    "2019": {
+      "trades": 56,
+      "win_pct": 41.1,
+      "avg_R": -0.199,
+      "total_R": -11.1
+    },
+    "2020": {
+      "trades": 60,
+      "win_pct": 43.3,
+      "avg_R": -0.145,
+      "total_R": -8.7
+    },
+    "2021": {
+      "trades": 54,
+      "win_pct": 57.4,
+      "avg_R": 0.115,
+      "total_R": 6.2
+    },
+    "2022": {
+      "trades": 78,
+      "win_pct": 56.4,
+      "avg_R": 0.116,
+      "total_R": 9.0
+    },
+    "2023": {
+      "trades": 63,
+      "win_pct": 52.4,
+      "avg_R": 0.016,
+      "total_R": 1.0
+    },
+    "2024": {
+      "trades": 43,
+      "win_pct": 62.8,
+      "avg_R": 0.239,
+      "total_R": 10.3
+    },
+    "2025": {
+      "trades": 53,
+      "win_pct": 39.6,
+      "avg_R": -0.251,
+      "total_R": -13.3
+    },
+    "2026": {
+      "trades": 52,
+      "win_pct": 48.1,
+      "avg_R": -0.05,
+      "total_R": -2.6
+    }
+  }
+}
