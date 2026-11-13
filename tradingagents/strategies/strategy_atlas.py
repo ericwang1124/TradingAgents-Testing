@@ -28,6 +28,10 @@ TICKERS = ["SPY", "QQQ", "IWM", "RSP", "IWD", "IWF", "USMV", "TLT", "IEF", "GLD"
            "EURUSD=X", "JPY=X", "DX-Y.NYB", "GC=F", "CL=F", "HG=F", "^MOVE"]
 FRED_SERIES = {"DGS2": "2y Treasury yield", "T10Y2Y": "10y-2y spread", "DFII10": "10y real yield",
                "T10YIE": "10y breakeven inflation"}
+VOLUME_TICKERS = ("SPY", "QQQ", "IWM")
+# policy: fed funds, target upper bound, Fed assets (weekly), Treasury General Account (weekly),
+# overnight reverse repo, daily news-based Economic Policy Uncertainty, monthly trade-policy uncertainty
+POLICY_SERIES = ("DFF", "DFEDTARU", "WALCL", "WTREGEN", "RRPONTSYD", "USEPUINDXD", "EPUTRADE")
 SECTORS = ["XLU", "XLP", "XLV", "XLY", "XLK", "XLI", "XLE", "XLF", "XLB"]
 START = "2007-06-01"
 INTRADAY_CSV = Path("results/opening_reversal/regime_now_streams.csv")
@@ -41,11 +45,13 @@ def load_ohlc(refresh: bool = False) -> Dict[str, pd.DataFrame]:
     for t in TICKERS:
         path = cache / f"{t.replace('^', '_')}.csv"
         if path.exists() and not refresh:
-            out[t] = pd.read_csv(path, index_col=0, parse_dates=True)
-            continue
+            cached = pd.read_csv(path, index_col=0, parse_dates=True)
+            if "Volume" in cached.columns or t not in VOLUME_TICKERS:
+                out[t] = cached
+                continue
         import yfinance as yf
 
-        h = yf.Ticker(t).history(period="max", auto_adjust=True)[["Open", "High", "Low", "Close"]]
+        h = yf.Ticker(t).history(period="max", auto_adjust=True)[["Open", "High", "Low", "Close", "Volume"]]
         h.index = pd.DatetimeIndex(h.index.date)
         h.to_csv(path)
         out[t] = h
@@ -212,7 +218,73 @@ def build_scenarios(d: Dict[str, pd.DataFrame], cpi: pd.Series, cal: pd.Datetime
     sc["2y yield 3-month change"] = np.where(fred["DGS2"].diff(63) > 0, "rising", "falling")
     sc["10y real yield 3-month change"] = np.where(fred["DFII10"].diff(63) > 0, "rising", "falling")
     sc["10y breakeven inflation 3-month change"] = np.where(fred["T10YIE"].diff(63) > 0, "rising", "falling")
-    return sc.shift(1)  # known at the prior close
+
+    # ---- trading volume (SPY shares, relative to its own history) ------------------------
+    vol = d["SPY"]["Volume"].reindex(cal).replace(0, np.nan)
+    rel = vol / vol.rolling(20, min_periods=15).median().shift(1)
+    sc["SPY volume vs 20d median"] = pd.cut(rel, [0, 0.8, 1.3, 2.0, 1e9], labels=["low <0.8x", "normal", "high 1.3-2x", "spike >=2x"]).astype(str)
+    sc.loc[rel.isna(), "SPY volume vs 20d median"] = None
+    act = vol.rolling(20).mean() / vol.rolling(252, min_periods=126).median()
+    sc["SPY 20d volume vs 1y median"] = np.where(act > 1.15, "active", np.where(act < 0.85, "quiet", "normal")).astype(object)
+    sc.loc[act.isna(), "SPY 20d volume vs 1y median"] = None
+    ret = spy.pct_change()
+    upv, dnv = vol.where(ret > 0, 0).rolling(10).sum(), vol.where(ret < 0, 0).rolling(10).sum()
+    bal = upv / dnv.replace(0, np.nan)
+    sc["up/down volume balance (10d)"] = np.where(bal > 1.25, "accumulation", np.where(bal < 0.8, "distribution", "neutral")).astype(object)
+    heavy = rel > 1.2
+    sc["price-volume (last day)"] = np.select([(ret > 0) & heavy, (ret > 0) & ~heavy, (ret < 0) & heavy, (ret < 0) & ~heavy],
+                                              ["up on heavy volume", "up on light volume", "down on heavy volume", "down on light volume"],
+                                              default="flat").astype(object)
+    sc.loc[rel.isna(), "price-volume (last day)"] = None
+
+    # ---- policy -----------------------------------------------------------------------------
+    pol = {k: load_fred(k) for k in POLICY_SERIES}
+    daily = lambda s, lag=1: s.reindex(s.index.union(cal)).ffill().reindex(cal).shift(lag)
+    ff = daily(pol["DFF"])
+    chg = ff - ff.shift(126)
+    sc["Fed policy cycle (fed funds 6m change)"] = np.where(chg > 0.25, "hiking", np.where(chg < -0.25, "cutting", "on hold")).astype(object)
+    from .opening_reversal.events import load_fomc_days
+
+    fomc = sorted(pd.Timestamp(x) for x in load_fomc_days())
+    tgt = pol["DFEDTARU"].combine_first(pol["DFF"].rolling(5).median()).sort_index()
+    decision = pd.Series(index=cal, dtype=object)
+    for m in fomc:
+        if m > cal[-1] or m < cal[0]:
+            continue
+        before, after = tgt.asof(m - pd.Timedelta(days=1)), tgt.asof(m + pd.Timedelta(days=2))
+        verdict = "hike" if after - before > 0.1 else ("cut" if after - before < -0.1 else "hold")
+        decision.loc[decision.index > m] = verdict  # from the session after the statement on
+    sc["last FOMC decision"] = decision
+    # session index of each statement day (first session on/after it), then distance in sessions
+    mpos = np.unique(cal.searchsorted(pd.DatetimeIndex(fomc)))
+    mpos = mpos[mpos < len(cal)]
+    i = np.arange(len(cal))
+    k = np.searchsorted(mpos, i, side="left")           # first meeting at or after session i
+    to_next = pd.Series(np.where(k < len(mpos), mpos[np.minimum(k, len(mpos) - 1)] - i, np.nan), index=cal)
+    kp = np.searchsorted(mpos, i, side="left") - 1      # last meeting strictly before session i
+    since_prev = pd.Series(np.where(kp >= 0, i - mpos[np.maximum(kp, 0)], np.nan), index=cal)
+    sc["FOMC calendar"] = np.select([to_next == 0, to_next == 1, since_prev == 1, (to_next > 1) & (to_next <= 4)],
+                                    ["FOMC day", "day before FOMC", "day after FOMC", "FOMC week (other)"],
+                                    default="no FOMC").astype(object)
+    assets = daily(pol["WALCL"], lag=2)  # weekly, Wednesday level published Thursday
+    sc["Fed balance sheet 13w change"] = np.where(assets.pct_change(63) > 0.01, "expanding (QE)",
+                                                  np.where(assets.pct_change(63) < -0.01, "shrinking (QT)", "flat")).astype(object)
+    net = assets - daily(pol["WTREGEN"], lag=2) - daily(pol["RRPONTSYD"]).fillna(0) * 1000  # RRP is in $bn
+    sc["net liquidity (Fed assets - TGA - RRP) 13w change"] = np.where(net.diff(63) > 0, "rising", "falling")
+    epu = daily(pol["USEPUINDXD"])
+    e = epu.rolling(5).mean() / epu.rolling(252, min_periods=126).median()
+    sc["policy uncertainty EPU (5d avg vs 1y median)"] = np.where(e > 1.5, "spike >1.5x", np.where(e > 1.0, "elevated", "low")).astype(object)
+    sc.loc[e.isna(), "policy uncertainty EPU (5d avg vs 1y median)"] = None
+    tpu = pol["EPUTRADE"]
+    tpu = pd.Series(tpu.to_numpy(), index=tpu.index + pd.DateOffset(days=45))  # monthly, published with a lag
+    tpu_d = tpu.reindex(tpu.index.union(cal)).ffill().reindex(cal)
+    sc["trade policy uncertainty vs 3y median"] = np.where(tpu_d > tpu_d.rolling(756, min_periods=252).median() * 1.5, "high", "normal").astype(object)
+    out = sc.shift(1)  # market data: known at the prior close
+    # The FOMC calendar is published in advance, and the decision series already starts on the
+    # session after the statement, so neither gets the extra one-day lag.
+    out["FOMC calendar"] = sc["FOMC calendar"]
+    out["last FOMC decision"] = sc["last FOMC decision"]
+    return out
 
 
 # --------------------------------------------------------------------------------- atlas

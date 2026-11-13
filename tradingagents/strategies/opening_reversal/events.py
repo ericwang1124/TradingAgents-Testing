@@ -29,7 +29,8 @@ FED_PAGES = {
 }
 # FRED's calendar ignores older ranges and serves roughly the previous year onward; without an
 # explicit range it renders a different (weekly) layout, so always pass one.
-FRED_CALENDAR = "https://fred.stlouisfed.org/releases/calendar?rid={rid}&vs=2025-01-01&ve={end}-12-31&y=2025"
+HISTORICAL_PAGE = "https://www.federalreserve.gov/monetarypolicy/fomchistorical{year}.htm"
+FRED_CALENDAR ="https://fred.stlouisfed.org/releases/calendar?rid={rid}&vs=2025-01-01&ve={end}-12-31&y=2025"
 FRED_RELEASES = {"cpi": 10, "jobs": 50}
 MEGACAPS = ("AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA")
 MONTHS = {m: i for i, m in enumerate(
@@ -73,14 +74,21 @@ def parse_fomc_historical(html: str) -> List[date]:
     for title in re.findall(r"<h5[^>]*>([^<]*Meeting - \d{4})</h5>", html):
         if "cancel" in title.lower():
             continue
-        m = re.match(r"\s*([A-Za-z/]+)\s+([\d-]+)\s*(\(unscheduled\))?\s*Meeting - (\d{4})", title)
+        # "January 29-30", "April/May 30-1", "July 31-August 1", "March 15 (unscheduled)"
+        m = re.match(r"\s*([A-Za-z]+)(?:/([A-Za-z]+))?\s+(\d+)(?:-(?:([A-Za-z]+)\s+)?(\d+))?\s*(\(unscheduled\))?"
+                     r"\s*Meeting - (\d{4})", title)
         if not m:
             continue
-        months, days, unscheduled, year = m.group(1), m.group(2), m.group(3), int(m.group(4))
-        nums = [int(x) for x in days.split("-")]
-        names = months.split("/")
-        mon = _month(names[-1] if len(names) > 1 and nums[-1] < nums[0] else names[0])
-        day = date(year, mon, nums[-1])
+        m1, m_slash, d1, m2, d2, unscheduled, year = m.groups()
+        year, first = int(year), int(d1)
+        last = int(d2) if d2 else first
+        if m2:
+            mon = _month(m2)
+        elif m_slash and last < first:
+            mon = _month(m_slash)
+        else:
+            mon = _month(m1)
+        day = date(year, mon, last)
         if unscheduled:
             # The 2 Mar 2020 call was announced on 3 Mar; the Sunday 15 Mar 2020 cut hit Monday's open.
             day = day + timedelta(days=1)
@@ -93,8 +101,8 @@ def load_fomc_days(cache_dir: Optional[Path] = None, refresh: bool = False) -> L
     if path.exists() and not refresh:
         return [d.date() for d in pd.to_datetime(pd.read_csv(path)["date"])]
     days = set(parse_fomc_current(_get(FED_PAGES["current"])))
-    for year in (2019, 2020):
-        days |= set(parse_fomc_historical(_get(FED_PAGES[year])))
+    for year in range(2007, 2021):  # historical pages; the current page covers the last ~5 years
+        days |= set(parse_fomc_historical(_get(FED_PAGES.get(year, HISTORICAL_PAGE.format(year=year)))))
     out = sorted(days)
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"date": out}).to_csv(path, index=False)
