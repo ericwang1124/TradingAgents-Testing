@@ -161,6 +161,46 @@ def test_resample_bars_aggregates_ohlcv():
     assert (first["open"], first["high"], first["low"], first["close"], first["volume"]) == (0, 5, -1, 4.5, 5)
 
 
+def test_regime_classification_and_vix_alignment():
+    from tradingagents.strategies.opening_reversal.regime import attach_vix, classify
+
+    ctx = _last_ctx(_history(_setup_day(TEST_DAY), trend=0.02))
+    ctx.features["sma50"] = ctx.prev_close + 1.0  # prior close below the 50-day average
+    day = ctx.day.tz_localize(None).normalize()
+    # Same-day VIX (99) must be ignored; the prior day's close (22) is what was known at the open.
+    vix = pd.Series([12.0, 22.0, 99.0], index=pd.DatetimeIndex([day - pd.Timedelta(days=3),
+                                                                 day - pd.Timedelta(days=1), day]))
+    attach_vix([ctx], vix)
+    assert ctx.features["vix_prev"] == 22.0
+    assert classify(ctx) == "down/vix>=20"
+    ctx.features["sma50"] = ctx.prev_close - 1.0
+    ctx.features["vix_prev"] = 14.0
+    assert classify(ctx) == "up/vix<15"
+
+
+def test_walk_forward_only_uses_past_trades():
+    from tradingagents.strategies.opening_reversal.regime_study import walk_forward
+
+    rng = np.random.default_rng(0)
+    rows = []
+    for year in (2020, 2021, 2022):
+        for k in range(30):
+            d = pd.Timestamp(f"{year}-03-01") + pd.Timedelta(days=k)
+            # A: consistently good in the past, mediocre in 2022
+            rows.append(("A", d.date(), (0.6 if year < 2022 else -0.1) + rng.normal(0, 0.2), "calm"))
+            # B: poor in the past, spectacular only in 2022 (must NOT be picked for 2022)
+            rows.append(("B", d.date(), (-0.5 if year < 2022 else 2.0) + rng.normal(0, 0.2), "calm"))
+            # C: only ever trades in another regime, always bad -> that regime stands aside
+            rows.append(("C", d.date(), -0.5 + rng.normal(0, 0.2), "stress"))
+    trades = pd.DataFrame(rows, columns=["combo", "date", "r", "regime"])
+    oos, choices = walk_forward(trades, [2021, 2022], min_n=15, min_t=1.0)
+    picked = choices.set_index(["year", "regime"])["choice"]
+    assert picked[(2022, "calm")] == "A"
+    assert picked[(2022, "stress")] == "(stand aside)"
+    assert set(oos["combo"]) == {"A"}
+    assert len(oos) == 60  # A's trades in 2021 and 2022
+
+
 def test_volume_profile_poc_and_value_area():
     idx = pd.date_range("2024-01-02 09:30", periods=4, freq="1min", tz=NY)
     bars = pd.DataFrame(
