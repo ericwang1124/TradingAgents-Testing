@@ -201,6 +201,33 @@ def test_walk_forward_only_uses_past_trades():
     assert len(oos) == 60  # A's trades in 2021 and 2022
 
 
+def test_walk_forward_score_learns_from_past_years_only():
+    from tradingagents.strategies.opening_reversal.patterns import FEATURES, walk_forward_score
+
+    rng = np.random.default_rng(1)
+    rows = []
+    for year in (2019, 2020, 2021, 2022):
+        for k in range(80):
+            x = rng.normal()
+            # 'gap_pct' predicts the outcome in 2019-2021 only; in 2022 the relation flips.
+            good = x > 0 if year < 2022 else x < 0
+            row = {f: rng.normal() for f in FEATURES}
+            row.update(gap_pct=x, date=date_(year, k), r=1.5 if good else -1.0)
+            rows.append(row)
+    df = pd.DataFrame(rows)
+    df["r_bucket"] = df["r"]
+    traded, chosen = walk_forward_score(df, [2021, 2022], top_frac=0.3)
+    assert "+gap_pct" in chosen[2021] and "+gap_pct" in chosen[2022]
+    by_year = traded.assign(y=pd.to_datetime(traded["date"]).dt.year).groupby("y")["r"].mean()
+    base = df["r"].mean()          # 50/50 outcomes -> +0.25 on average
+    assert by_year[2021] > base + 0.3  # pattern held: mostly winners selected
+    assert by_year[2022] < 0.0         # pattern broke: no peeking at 2022 to rescue it
+
+
+def date_(year, k):
+    return (pd.Timestamp(f"{year}-01-02") + pd.Timedelta(days=k)).date()
+
+
 def test_volume_profile_poc_and_value_area():
     idx = pd.date_range("2024-01-02 09:30", periods=4, freq="1min", tz=NY)
     bars = pd.DataFrame(

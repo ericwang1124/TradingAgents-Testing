@@ -108,6 +108,7 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
     contexts: List[DayContext] = []
     prev: Optional[pd.DataFrame] = None
     daily_closes: List[float] = []  # RTH closes of completed sessions, oldest first
+    daily_hlc: List[tuple] = []     # (high, low, close) of completed sessions
     for day in sorted(rth_by_day):
         rth = rth_by_day[day]
         if prev is not None and _session_minutes(rth) > 30 and rth.index[0].time() == RTH_OPEN:
@@ -128,6 +129,7 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
                 f"sma{n}": float(np.mean(daily_closes[-n:])) if len(daily_closes) >= n else np.nan
                 for n in (20, 50)
             }
+            features.update(_daily_features(daily_hlc))
             contexts.append(
                 DayContext(
                     day=day,
@@ -141,4 +143,18 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
         if _session_minutes(rth) > 30:
             prev = rth
             daily_closes.append(float(rth["close"].iloc[-1]))
+            daily_hlc.append((float(rth["high"].max()), float(rth["low"].min()), float(rth["close"].iloc[-1])))
     return contexts
+
+
+def _daily_features(hlc: List[tuple]) -> Dict[str, float]:
+    """ATR(14) as a fraction of the last close, and 1-/5-session returns, from completed sessions."""
+    out = {"atr14_pct": np.nan, "ret_1d": np.nan, "ret_5d": np.nan}
+    if len(hlc) >= 15:
+        tr = [max(h, hlc[k - 1][2]) - min(l, hlc[k - 1][2]) for k, (h, l, _) in enumerate(hlc[-14:], len(hlc) - 14)]
+        out["atr14_pct"] = float(np.mean(tr)) / hlc[-1][2]
+    if len(hlc) >= 2:
+        out["ret_1d"] = hlc[-1][2] / hlc[-2][2] - 1.0
+    if len(hlc) >= 6:
+        out["ret_5d"] = hlc[-1][2] / hlc[-6][2] - 1.0
+    return out
