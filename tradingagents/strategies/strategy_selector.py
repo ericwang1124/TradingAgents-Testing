@@ -74,7 +74,7 @@ def shrunk_mu(sc_past: pd.DataFrame, y: pd.Series, sc_now: pd.DataFrame, k: floa
 
 def walk_forward(Sx: pd.DataFrame, sc: pd.DataFrame, years: List[int], model: str, param: float) -> pd.DataFrame:
     """Expected next-day return per strategy, each year fitted on earlier years only."""
-    X_all = one_hot(sc)
+    X_all = one_hot(sc) if model == "ridge" else None
     mu = pd.DataFrame(np.nan, index=Sx.index, columns=Sx.columns)
     yr = Sx.index.year
     for y in years:
