@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-13",
+  "decision": "NO_GO",
+  "size": 0.0,
+  "confidence": 0.95,
+  "reasons": [
+    "No setup possible: SPY gapped UP ~+0.4% (premarket 760.34 vs prior close 757.20); the strategy needs a gap-down of at least 0.15%",
+    "8:30 ET PPI release today (Oct PPI 0.3% m/m vs 0.4% est.); 8:30 data days were worse in both periods of the event study",
+    "Regime down/vix15-20: historically 31 trades, 32% wins, -0.36R average, the weakest regime",
+    "News-driven morning: Nvidia CEO exit in focus, hawkish Fed speakers (Goolsbee) on persistent inflation",
+    "Routine fired 46 minutes late (09:38 ET instead of 08:52); subagent research skipped because the gap direction already rules out a signal"
+  ],
+  "sources": [
+    "Alpaca/Benzinga news feed in journal/opening_reversal/2026-11-13/briefing.md"
+  ],
+  "decided_at": "2026-11-13T09:38:51.188737-05:00"
+}
