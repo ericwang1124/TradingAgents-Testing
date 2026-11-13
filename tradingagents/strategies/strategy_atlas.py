@@ -23,7 +23,11 @@ from .opening_reversal.data import default_cache_dir
 
 TICKERS = ["SPY", "QQQ", "IWM", "RSP", "IWD", "IWF", "USMV", "TLT", "IEF", "GLD", "DBC", "UUP", "HYG", "LQD",
            "BIL", "XLU", "XLP", "XLV", "XLY", "XLK", "XLI", "XLE", "XLF", "XLB", "^VIX", "^VIX3M", "^TNX",
-           "^PUT", "VIXY", "SVXY"]
+           "^PUT", "VIXY", "SVXY", "USO", "FXE", "FXY", "BTC-USD",
+           # macro gauges (scenarios only)
+           "EURUSD=X", "JPY=X", "DX-Y.NYB", "GC=F", "CL=F", "HG=F", "^MOVE"]
+FRED_SERIES = {"DGS2": "2y Treasury yield", "T10Y2Y": "10y-2y spread", "DFII10": "10y real yield",
+               "T10YIE": "10y breakeven inflation"}
 SECTORS = ["XLU", "XLP", "XLV", "XLY", "XLK", "XLI", "XLE", "XLF", "XLB"]
 START = "2007-06-01"
 INTRADAY_CSV = Path("results/opening_reversal/regime_now_streams.csv")
@@ -48,13 +52,17 @@ def load_ohlc(refresh: bool = False) -> Dict[str, pd.DataFrame]:
     return out
 
 
+def load_fred(series_id: str, refresh: bool = False) -> pd.Series:
+    path = default_cache_dir() / "atlas" / f"fred_{series_id}.csv"
+    if refresh or not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pd.read_csv(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}").to_csv(path, index=False)
+    s = pd.read_csv(path, parse_dates=["observation_date"]).set_index("observation_date")[series_id]
+    return pd.to_numeric(s, errors="coerce")
+
+
 def load_cpi() -> pd.Series:
-    path = default_cache_dir() / "atlas" / "cpi.csv"
-    if not path.exists():
-        cpi = pd.read_csv("https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL")
-        cpi.to_csv(path, index=False)
-    cpi = pd.read_csv(path, parse_dates=["observation_date"])
-    return cpi.set_index("observation_date")["CPIAUCSL"]
+    return load_fred("CPIAUCSL")
 
 
 # ----------------------------------------------------------------------------- strategies
@@ -109,7 +117,9 @@ def build_strategies(d: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     S["MR: IBS<0.2, hold 1 day"] = ex["SPY"] * lag((ibs < 0.2).astype(float))
     # multi-asset
     for t, name in (("TLT", "long bonds TLT"), ("IEF", "long bonds IEF"), ("GLD", "long gold"),
-                    ("DBC", "long commodities DBC"), ("UUP", "long US dollar UUP"), ("HYG", "long high yield HYG")):
+                    ("DBC", "long commodities DBC"), ("UUP", "long US dollar UUP"), ("HYG", "long high yield HYG"),
+                    ("USO", "long oil USO"), ("FXE", "long euro FXE"), ("FXY", "long yen FXY"),
+                    ("BTC-USD", "long bitcoin")):
         S[name] = ex[t]
     assets = ["SPY", "TLT", "GLD", "DBC"]
     vol = r[assets].ewm(span=60).std() * np.sqrt(252)
@@ -171,6 +181,37 @@ def build_scenarios(d: Dict[str, pd.DataFrame], cpi: pd.Series, cal: pd.Datetime
     sc["US dollar (UUP vs SMA50)"] = np.where(C["UUP"] > C["UUP"].rolling(50).mean(), "strong", "weak")
     rv = np.log(spy).diff().rolling(20).std() * np.sqrt(252) * 100
     sc["implied - realized vol (VIX - RV20)"] = np.where(C["^VIX"] - rv > 0, "VIX > realized", "VIX < realized")
+
+    # ---- macro gauges (FX, commodities, rates) --------------------------------------------
+    def px(t):  # 24h / differently-scheduled markets: last print on or before each SPY close
+        s = d[t]["Close"].where(d[t]["Close"] > 0)  # WTI printed negative in April 2020
+        return s.reindex(s.index.union(cal)).ffill().reindex(cal)
+
+    def shock(s: pd.Series, down: str, up: str) -> pd.Series:
+        """21-day log move vs its own trailing-year spread: <= -1 sd / normal / >= +1 sd."""
+        m = np.log(s).diff(21)
+        z = m / m.rolling(252, min_periods=126).std()
+        return pd.Series(np.where(z >= 1, up, np.where(z <= -1, down, "normal")), index=s.index).where(z.notna())
+
+    sc["EUR/USD 1-month move"] = shock(px("EURUSD=X"), "euro plunge (USD up)", "euro surge (USD down)")
+    sc["USD/JPY 1-month move"] = shock(px("JPY=X"), "yen surge (USDJPY down)", "yen plunge (USDJPY up)")
+    sc["dollar index DXY 1-month move"] = shock(px("DX-Y.NYB"), "DXY plunge", "DXY surge")
+    sc["gold 1-month move"] = shock(px("GC=F"), "gold plunge", "gold surge")
+    sc["oil (WTI) 1-month move"] = shock(px("CL=F"), "oil plunge", "oil surge")
+    sc["bitcoin 1-month move"] = shock(px("BTC-USD"), "BTC plunge", "BTC surge")
+    cg = px("HG=F") / px("GC=F")
+    sc["copper/gold ratio vs SMA50"] = np.where(cg > cg.rolling(50).mean(), "rising (growth)", "falling").astype(object)
+    sc.loc[cg.rolling(50).mean().isna(), "copper/gold ratio vs SMA50"] = None
+    move = px("^MOVE")
+    sc["bond volatility MOVE vs 1y median"] = np.where(move > move.rolling(252, min_periods=126).median(), "high", "low").astype(object)
+    # FRED: values dated t are typically published on t+1, so lag one extra session
+    fred = {k: load_fred(k).reindex(load_fred(k).index.union(cal)).ffill().reindex(cal).shift(1) for k in FRED_SERIES}
+    curve = fred["T10Y2Y"]
+    sc["yield curve 10y-2y level"] = pd.cut(curve, [-10, 0, 0.5, 10], labels=["inverted", "flat 0-0.5", "steep >0.5"]).astype(str)
+    sc["yield curve 3-month change"] = np.where(curve.diff(63) > 0, "steepening", "flattening")
+    sc["2y yield 3-month change"] = np.where(fred["DGS2"].diff(63) > 0, "rising", "falling")
+    sc["10y real yield 3-month change"] = np.where(fred["DFII10"].diff(63) > 0, "rising", "falling")
+    sc["10y breakeven inflation 3-month change"] = np.where(fred["T10YIE"].diff(63) > 0, "rising", "falling")
     return sc.shift(1)  # known at the prior close
 
 
