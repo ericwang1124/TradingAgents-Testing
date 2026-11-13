@@ -181,5 +181,13 @@
       "status": "pending_new"
     }
   ],
-  "dry_run": false
+  "dry_run": false,
+  "fills_checked_at": "2026-11-13T16:05:00-05:00",
+  "fills": {
+    "IEF": "filled 99/99 @ 90.05",
+    "UUP": "expired, filled 171/228 @ 29.50",
+    "HYG": "expired, filled 145/191 @ 76.94",
+    "others (XLK, TLT, SVXY, SPY, RSP, QQQ, IWM, IBIT, GLD, DBC)": "expired, 0 filled"
+  },
+  "note": "Paper account let most market-on-close orders expire. From 2026-11-16 the rebalance sends market orders 15 minutes before the close and resends any unfilled part once; the residual of today's targets is picked up then."
 }

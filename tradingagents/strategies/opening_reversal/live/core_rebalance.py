@@ -1,9 +1,11 @@
-"""End-of-day rebalance of the core diversified portfolio on Alpaca paper (market-on-close orders).
+"""End-of-day rebalance of the core diversified portfolio on Alpaca paper.
 
 Weights are refit once a year (``core-weights``) on the full history and saved next to this file;
 the daily run only needs ~2 years of daily bars to compute today's positions and strategy scales.
-Today's close is approximated by the latest trade at run time (the run is scheduled ~15:12 ET and
-orders are market-on-close, so they fill at the actual close).
+The run starts ~15:12 ET, waits until 15 minutes before the close, takes the latest trades as
+today's close, and sends ordinary market orders; any part left unfilled after a minute is sent once
+more. (Market-on-close orders were tried first: on 2026-11-13 the paper account let 10 of 13 expire
+unfilled at the close and filled two others only in part.)
 """
 
 from __future__ import annotations
@@ -24,7 +26,9 @@ from .alpaca_trading import AlpacaClient
 
 WEIGHTS_PATH = Path(__file__).with_name("core_weights.json")
 MIN_TRADE_USD = 250.0
-MOC_CUTOFF = time(15, 49)
+EXEC_BEFORE_CLOSE = timedelta(minutes=15)   # send orders this long before the session's close
+LATEST_SEND = timedelta(minutes=2)          # too late to trade if closer to the close than this
+FILL_WAIT_S = 60.0
 CORE_FRACTION = 1.0          # share of account equity run by the core book (before its leverage)
 ORDER_PREFIX = "core"
 
@@ -103,21 +107,64 @@ def plan_orders(targets_usd: Dict[str, float], current_qty: Dict[str, float], pr
         want = max(targets_usd.get(sym, 0.0), 0.0) / px   # long-only
         have = max(current_qty.get(sym, 0.0), 0.0)
         delta = want - have
-        qty = math.floor(have) if want == 0 else math.floor(abs(delta))  # MOC orders take whole shares
+        qty = math.floor(have) if want == 0 else math.floor(abs(delta))  # whole shares only
         if qty == 0 or qty * px < MIN_TRADE_USD:
             continue
         orders.append({"symbol": sym, "side": "buy" if delta > 0 else "sell", "qty": qty, "est_usd": round(qty * px, 2)})
     return sorted(orders, key=lambda o: o["side"] != "sell")
 
 
+def session_close(cal_row: dict, day: date) -> pd.Timestamp:
+    hh, mm = (int(x) for x in cal_row.get("close", "16:00").split(":")[:2])
+    return pd.Timestamp(datetime.combine(day, time(hh, mm)), tz=NY)
+
+
+def execute(client: AlpacaClient, orders: List[dict], day: date) -> List[dict]:
+    """Market orders, sells first; whatever is unfilled after FILL_WAIT_S is cancelled and sent once more."""
+    out = []
+    for o in orders:
+        row = {"symbol": o["symbol"], "side": o["side"], "qty": o["qty"], "filled_qty": 0.0, "attempts": []}
+        remaining = o["qty"]
+        for attempt in (1, 2):
+            try:
+                res = client.submit_order(o["symbol"], remaining, o["side"], time_in_force="day",
+                                          client_order_id=f"{ORDER_PREFIX}-{day:%Y%m%d}-{o['symbol']}-{o['side']}-{attempt}")
+                fin = client.wait_filled(res["id"], timeout_s=FILL_WAIT_S)
+                filled = float(fin.get("filled_qty") or 0.0)
+                if fin.get("status") not in ("filled", "canceled", "expired", "rejected"):
+                    try:
+                        client.cancel_order(res["id"])
+                    except Exception:
+                        pass
+                    filled = float(client.get_order(res["id"]).get("filled_qty") or filled)
+                row["attempts"].append({"id": res.get("id"), "status": fin.get("status"), "filled_qty": filled,
+                                        "avg_price": fin.get("filled_avg_price")})
+                row["filled_qty"] += filled
+                remaining = int(round(remaining - filled))
+            except Exception as e:  # keep going; log the failure
+                row["attempts"].append({"error": str(e)[:300]})
+            if remaining <= 0:
+                break
+        out.append(row)
+    return out
+
+
 def rebalance(day: date, client: Optional[AlpacaClient] = None, dry_run: bool = False) -> dict:
     client = client or AlpacaClient()
-    now = pd.Timestamp.now(tz=NY)
     cal = client.calendar(day, day + timedelta(days=10))
     if not cal or cal[0]["date"] != day.isoformat():
         rec = {"date": day.isoformat(), "skipped": "market closed"}
         journal.write(day, "core", rec)
         return rec
+    close = session_close(cal[0], day)
+    if not dry_run:
+        from .addon import _sleep_until
+        _sleep_until(close - EXEC_BEFORE_CLOSE)
+        if pd.Timestamp.now(tz=NY) > close - LATEST_SEND:
+            rec = {"date": day.isoformat(), "skipped": f"too close to the {close:%H:%M} close to trade"}
+            journal.write(day, "core", rec)
+            return rec
+    now = pd.Timestamp.now(tz=NY)
     next_sessions = [date.fromisoformat(c["date"]) for c in cal[1:]]
     weights = load_weights()
     hist = _history_yahoo()
@@ -131,18 +178,13 @@ def rebalance(day: date, client: Optional[AlpacaClient] = None, dry_run: bool = 
     targets = {cp.LIVE_TICKER.get(t, t): float(v * equity) for t, v in E.items() if v > 1e-4}
     positions = {p["symbol"]: float(p["qty"]) for p in client.positions() if p.get("asset_class") == "us_equity"}
     orders = plan_orders(targets, positions, prices)
-    tif = "cls" if now.time() <= MOC_CUTOFF else "day"
-    rec = {"date": day.isoformat(), "run_at": now.isoformat(), "equity": equity, "time_in_force": tif,
+    rec = {"date": day.isoformat(), "run_at": now.isoformat(), "equity": equity, "order_type": "market",
            "exposures": {k: round(float(v), 4) for k, v in E.items() if v > 1e-4},
            "targets_usd": {k: round(v, 2) for k, v in targets.items()},
            "gross_exposure": round(float(E.sum()), 3), "orders": orders, "submitted": [], "dry_run": dry_run}
     if not dry_run:
-        for o in orders:
-            try:
-                res = client.submit_order(o["symbol"], o["qty"], o["side"], time_in_force=tif,
-                                          client_order_id=f"{ORDER_PREFIX}-{day:%Y%m%d}-{o['symbol']}-{o['side']}")
-                rec["submitted"].append({"symbol": o["symbol"], "id": res.get("id"), "status": res.get("status")})
-            except Exception as e:  # keep going; log the failure
-                rec["submitted"].append({"symbol": o["symbol"], "error": str(e)[:300]})
+        rec["submitted"] = execute(client, orders, day)
+        rec["unfilled"] = [{"symbol": s["symbol"], "qty": s["qty"] - s["filled_qty"]}
+                           for s in rec["submitted"] if s["filled_qty"] < s["qty"]]
     journal.write(day, "core", rec)
     return rec

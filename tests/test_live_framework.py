@@ -59,3 +59,37 @@ def test_addon_shadow_uses_threshold_and_long_side(monkeypatch):
     down = up.iloc[::-1].copy()
     down.index = idx
     assert not addon.shadow(idx[0].date(), down)["take"]                  # long side only
+
+
+class _FakeClient:
+    """Fills each first attempt only partly (half, rounded down); later attempts fill completely."""
+
+    def __init__(self):
+        self.sent, self.cancelled, self._orders = [], [], {}
+
+    def submit_order(self, symbol, qty, side, time_in_force="day", client_order_id=None, **_):
+        oid = f"o{len(self.sent)}"
+        first = not any(s[0] == symbol for s in self.sent)
+        filled = qty // 2 if first else qty
+        self.sent.append((symbol, qty, side, time_in_force))
+        self._orders[oid] = {"id": oid, "status": "partially_filled" if filled < qty else "filled",
+                             "filled_qty": str(filled), "filled_avg_price": "100"}
+        return {"id": oid, "status": "accepted"}
+
+    def wait_filled(self, oid, timeout_s=60.0):
+        return self._orders[oid]
+
+    def get_order(self, oid):
+        return self._orders[oid]
+
+    def cancel_order(self, oid):
+        self.cancelled.append(oid)
+
+
+def test_core_execute_resends_unfilled_part_once():
+    from tradingagents.strategies.opening_reversal.live.core_rebalance import execute
+
+    c = _FakeClient()
+    out = execute(c, [{"symbol": "TLT", "side": "buy", "qty": 81}], pd.Timestamp("2026-11-16").date())
+    assert [s[1] for s in c.sent] == [81, 41] and all(s[3] == "day" for s in c.sent)
+    assert c.cancelled == ["o0"] and out[0]["filled_qty"] == 81

@@ -72,6 +72,7 @@ def summary_table() -> pd.DataFrame:
             "addon_pnl_usd": adr.get("pnl_usd", np.nan),
             "core_gross": core.get("gross_exposure"),
             "core_orders": len(core.get("orders", [])),
+            "core_unfilled": len(core.get("unfilled", [])),
             "fade_signal": bool(live),
             "fade_shadow_R": live["r_multiple"] if live else np.nan,
             "traded": e.get("traded", False),

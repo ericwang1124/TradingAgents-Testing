@@ -103,7 +103,7 @@ def main(argv=None) -> None:
         from .core_rebalance import rebalance
 
         rec = rebalance(day, dry_run=args.dry_run)
-        print(json.dumps({k: rec.get(k) for k in ("gross_exposure", "time_in_force", "orders", "submitted", "skipped")},
+        print(json.dumps({k: rec.get(k) for k in ("gross_exposure", "order_type", "orders", "submitted", "unfilled", "skipped")},
                          indent=2, default=str))
     elif args.cmd == "core-weights":
         from .core_rebalance import save_weights
