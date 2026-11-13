@@ -26,6 +26,7 @@ class DayContext:
     open: float
     prev_close: float
     levels: Dict[str, float] = field(default_factory=dict)
+    features: Dict[str, float] = field(default_factory=dict)  # e.g. sma20 / sma50 of prior closes
 
     @property
     def gap_pct(self) -> float:
@@ -83,6 +84,13 @@ def _relative_volume(rth_by_day: Dict[pd.Timestamp, pd.DataFrame], lookback: int
     return out
 
 
+def _session_minutes(bars: pd.DataFrame) -> float:
+    """Minutes spanned by a session's bars (bar-size independent)."""
+    if len(bars) < 2:
+        return 0.0
+    return (bars.index[-1] - bars.index[0]).total_seconds() / 60.0
+
+
 def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = None) -> List[DayContext]:
     """Turn a continuous minute-bar frame into per-session contexts (first session is warm-up)."""
     params = params or StrategyParams()
@@ -99,9 +107,10 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
 
     contexts: List[DayContext] = []
     prev: Optional[pd.DataFrame] = None
+    daily_closes: List[float] = []  # RTH closes of completed sessions, oldest first
     for day in sorted(rth_by_day):
         rth = rth_by_day[day]
-        if prev is not None and len(rth) > 30 and rth.index[0].time() == RTH_OPEN:
+        if prev is not None and _session_minutes(rth) > 30 and rth.index[0].time() == RTH_OPEN:
             profile = volume_profile(prev, params.profile_bin_pct, params.value_area_share)
             levels = {
                 "prev_close": float(prev["close"].iloc[-1]),
@@ -115,6 +124,10 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
                 levels["premarket_high"] = float(pre["high"].max())
             frame = rth.copy()
             frame["rel_vol"] = rel_vol[day]
+            features = {
+                f"sma{n}": float(np.mean(daily_closes[-n:])) if len(daily_closes) >= n else np.nan
+                for n in (20, 50)
+            }
             contexts.append(
                 DayContext(
                     day=day,
@@ -122,8 +135,10 @@ def build_day_contexts(bars: pd.DataFrame, params: Optional[StrategyParams] = No
                     open=float(rth["open"].iloc[0]),
                     prev_close=levels["prev_close"],
                     levels=levels,
+                    features=features,
                 )
             )
-        if len(rth) > 30:
+        if _session_minutes(rth) > 30:
             prev = rth
+            daily_closes.append(float(rth["close"].iloc[-1]))
     return contexts

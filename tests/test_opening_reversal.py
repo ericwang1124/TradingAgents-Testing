@@ -55,9 +55,14 @@ def _setup_day(day: str, rally_volume: str = "fading", after_entry: str = "down"
     return df
 
 
-def _history(test_day: pd.DataFrame, prior_price: float = 100.0) -> pd.DataFrame:
+def _history(test_day: pd.DataFrame, prior_price: float = 100.0, trend: float = 0.0) -> pd.DataFrame:
+    """25 flat sessions before the test day. ``trend`` shifts earlier sessions up (+) or down (-)
+    so the last prior close ends at ``prior_price``."""
     days = pd.bdate_range("2024-01-01", periods=25)
-    frames = [_flat_day(d.strftime("%Y-%m-%d"), prior_price) for d in days]
+    frames = [
+        _flat_day(d.strftime("%Y-%m-%d"), prior_price + trend * (len(days) - 1 - k))
+        for k, d in enumerate(days)
+    ]
     return pd.concat(frames + [test_day])
 
 
@@ -118,6 +123,42 @@ def test_entry_window_is_enforced():
     ctx = _last_ctx(bars)
     late = replace(VARIANTS["full (gap+exhaustion+zone)"], entry_start=pd.Timestamp("10:00").time())
     assert find_signal(ctx, late) is None
+
+
+def test_regime_filter_uses_prior_closes_only():
+    full = VARIANTS["full (gap+exhaustion+zone)"]
+    # Downtrend: earlier closes above the last one -> prior close is below its 20-day average.
+    down = _last_ctx(_history(_setup_day(TEST_DAY), trend=0.02))
+    assert down.prev_close < down.features["sma20"]
+    assert find_signal(down, replace(full, regime="below_sma20")) is not None
+    assert find_signal(down, replace(full, regime="above_sma20")) is None
+    # Not enough history for a 50-day average -> the filter refuses to trade.
+    assert find_signal(down, replace(full, regime="below_sma50")) is None
+
+
+def test_break_lookback_waits_for_structure_break():
+    ctx = _last_ctx(_history(_setup_day(TEST_DAY)))
+    full = VARIANTS["full (gap+exhaustion+zone)"]
+    assert find_signal(ctx, full).signal_idx == 15
+    # Bar 15 closes at 99.85, above the low of bars 12-14 (99.817): with N=3 the trigger
+    # moves to bar 16, which closes below the low of bars 13-15.
+    sig = find_signal(ctx, replace(full, break_lookback=3))
+    assert sig is not None and sig.signal_idx == 16 and sig.entry_idx == 17
+
+
+def test_resample_bars_aggregates_ohlcv():
+    from tradingagents.strategies.opening_reversal.data import resample_bars
+
+    idx = pd.date_range("2024-01-02 09:30", periods=10, freq="1min", tz=NY)
+    bars = pd.DataFrame(
+        {"open": np.arange(10.0), "high": np.arange(10.0) + 1, "low": np.arange(10.0) - 1,
+         "close": np.arange(10.0) + 0.5, "volume": 1.0},
+        index=idx,
+    )
+    out = resample_bars(bars, 5)
+    assert list(out.index.strftime("%H:%M")) == ["09:30", "09:35"]
+    first = out.iloc[0]
+    assert (first["open"], first["high"], first["low"], first["close"], first["volume"]) == (0, 5, -1, 4.5, 5)
 
 
 def test_volume_profile_poc_and_value_area():

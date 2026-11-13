@@ -19,9 +19,16 @@ class StrategyParams:
     min_gap_pct: float = 0.0015          # open at least 0.15% below prior close
     max_gap_pct: float = 0.02            # skip crash opens (> 2% gap), behaviour differs
 
+    # --- market regime (uses only closes up to the prior session) --------------------------
+    # "any" | "below_sma20" | "above_sma20" | "below_sma50" | "above_sma50"
+    regime: str = "any"
+
     # --- the rally that is being faded ----------------------------------------------------
     min_rally_pct: float = 0.0015        # rally off the session low must be >= 0.15%
     max_bars_since_high: int = 5         # trigger must come within N bars of the rally high
+    # Reversal bar must close below the lowest low of the previous N bars (1 = prior bar only;
+    # larger = wait for a break of short-term structure).
+    break_lookback: int = 1
 
     # --- condition 2: volume exhaustion ---------------------------------------------------
     # Rally volume is divided by the median volume for that minute-of-day over the prior

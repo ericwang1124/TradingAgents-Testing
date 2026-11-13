@@ -145,6 +145,15 @@ def load_alpaca_minutes(
     return out[(out.index >= lo) & (out.index < hi)]
 
 
+def resample_bars(bars: pd.DataFrame, minutes: int) -> pd.DataFrame:
+    """Aggregate 1-minute bars to N-minute bars (bins anchored on the clock, so 9:30 starts a bar)."""
+    if minutes == 1:
+        return bars
+    agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    out = bars.resample(f"{minutes}min", label="left", closed="left").agg(agg)
+    return out.dropna(subset=["open"])
+
+
 def load_yfinance_bars(symbol: str, interval: str = "5m") -> pd.DataFrame:
     """Recent intraday bars from Yahoo (5m: ~60 days, 1m: ~30 days). For smoke tests only."""
     import yfinance as yf

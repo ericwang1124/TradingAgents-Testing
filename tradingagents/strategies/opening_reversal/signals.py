@@ -47,6 +47,21 @@ def gap_ok(ctx: DayContext, params: StrategyParams) -> bool:
     return True
 
 
+def regime_ok(ctx: DayContext, params: StrategyParams) -> bool:
+    """Trend filter on the prior close vs its moving average (no same-day information)."""
+    if params.regime == "any":
+        return True
+    side, _, length = params.regime.partition("_sma")
+    sma = ctx.features.get(f"sma{length}", np.nan)
+    if np.isnan(sma):
+        return False
+    if side == "below":
+        return ctx.prev_close < sma
+    if side == "above":
+        return ctx.prev_close > sma
+    raise ValueError(f"unknown regime {params.regime!r}")
+
+
 def exhaustion_ratio(rel_vol: np.ndarray, low_idx: int, high_idx: int, window: int) -> Optional[float]:
     """Mean relative volume of the last ``window`` rally bars over that of the first ``window``.
 
@@ -65,7 +80,7 @@ def exhaustion_ratio(rel_vol: np.ndarray, low_idx: int, high_idx: int, window: i
 
 
 def find_signal(ctx: DayContext, params: StrategyParams) -> Optional[Signal]:
-    if not gap_ok(ctx, params):
+    if not gap_ok(ctx, params) or not regime_ok(ctx, params):
         return None
     bars = ctx.rth
     o = bars["open"].to_numpy()
@@ -94,8 +109,8 @@ def find_signal(ctx: DayContext, params: StrategyParams) -> Optional[Signal]:
             continue
         if rally_high / rally_low - 1.0 < params.min_rally_pct:
             continue
-        # bearish bar that closes below the prior bar's low = the push has failed
-        if not (c[i] < o[i] and c[i] < l[i - 1]):
+        # bearish bar that closes below the lowest low of the prior N bars = the push has failed
+        if not (c[i] < o[i] and c[i] < l[max(0, i - params.break_lookback) : i].min()):
             continue
 
         zone = None

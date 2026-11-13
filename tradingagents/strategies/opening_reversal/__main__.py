@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .backtest import eligible_contexts, run_backtest
 from .config import VARIANTS, StrategyParams
-from .data import load_alpaca_minutes, load_yfinance_bars
+from .data import load_alpaca_minutes, load_yfinance_bars, resample_bars
 from .levels import build_day_contexts
 from .report import summarize, write_report
 
@@ -25,6 +25,7 @@ def main(argv=None) -> None:
     p.add_argument("--feed", default="sip", help="alpaca feed: sip (all exchanges) or iex")
     p.add_argument("--start", type=date.fromisoformat, default=date(2019, 1, 1))
     p.add_argument("--end", type=date.fromisoformat, default=date.today() - timedelta(days=1))
+    p.add_argument("--bar-minutes", type=int, default=1, help="alpaca only: aggregate 1m bars to N-minute bars")
     p.add_argument("--out", type=Path, default=Path("results/opening_reversal"))
     args = p.parse_args(argv)
 
@@ -36,7 +37,8 @@ def main(argv=None) -> None:
         # one month of warm-up for prior-day levels and the relative-volume baseline
         bars = load_alpaca_minutes(args.symbol, args.start - timedelta(days=45), args.end,
                                    client=AlpacaBarsClient(feed=args.feed))
-        source = f"Alpaca {args.feed.upper()} 1-minute bars (split+dividend adjusted)"
+        bars = resample_bars(bars, args.bar_minutes)
+        source = f"Alpaca {args.feed.upper()} {args.bar_minutes}-minute bars (split+dividend adjusted)"
     else:
         print(f"Loading {args.symbol} {args.interval} bars from yfinance (recent data only)")
         bars = load_yfinance_bars(args.symbol, args.interval)
