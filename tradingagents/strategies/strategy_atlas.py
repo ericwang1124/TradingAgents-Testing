@@ -23,11 +23,11 @@ from .opening_reversal.data import default_cache_dir
 
 TICKERS = ["SPY", "QQQ", "IWM", "RSP", "IWD", "IWF", "USMV", "TLT", "IEF", "GLD", "DBC", "UUP", "HYG", "LQD",
            "BIL", "XLU", "XLP", "XLV", "XLY", "XLK", "XLI", "XLE", "XLF", "XLB", "^VIX", "^VIX3M", "^TNX",
-           "^PUT", "VIXY", "SVXY", "USO", "FXE", "FXY", "BTC-USD",
+           "^PUT", "VIXY", "SVXY", "USO", "FXE", "FXY", "BTC-USD", "EFA", "EEM", "VNQ", "TIP",
            # macro gauges (scenarios only)
-           "EURUSD=X", "JPY=X", "DX-Y.NYB", "GC=F", "CL=F", "HG=F", "^MOVE"]
+           "EURUSD=X", "JPY=X", "DX-Y.NYB", "GC=F", "CL=F", "HG=F", "^MOVE", "CNY=X", "NG=F"]
 FRED_SERIES = {"DGS2": "2y Treasury yield", "T10Y2Y": "10y-2y spread", "DFII10": "10y real yield",
-               "T10YIE": "10y breakeven inflation"}
+               "T10YIE": "10y breakeven inflation", "DGS30": "30y Treasury yield"}
 VOLUME_TICKERS = ("SPY", "QQQ", "IWM")
 # policy: fed funds, target upper bound, Fed assets (weekly), Treasury General Account (weekly),
 # overnight reverse repo, daily news-based Economic Policy Uncertainty, monthly trade-policy uncertainty
@@ -125,8 +125,19 @@ def build_strategies(d: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     for t, name in (("TLT", "long bonds TLT"), ("IEF", "long bonds IEF"), ("GLD", "long gold"),
                     ("DBC", "long commodities DBC"), ("UUP", "long US dollar UUP"), ("HYG", "long high yield HYG"),
                     ("USO", "long oil USO"), ("FXE", "long euro FXE"), ("FXY", "long yen FXY"),
-                    ("BTC-USD", "long bitcoin")):
+                    ("BTC-USD", "long bitcoin"), ("EFA", "long developed ex-US EFA"),
+                    ("EEM", "long emerging markets EEM"), ("VNQ", "long REITs VNQ"), ("TIP", "long TIPS")):
         S[name] = ex[t]
+    # pre-FOMC drift (Lucca-Moench): hold SPY on the session before each statement and on the statement
+    # day (calendar known in advance)
+    from .opening_reversal.events import load_fomc_days
+
+    mpos = np.unique(cal.searchsorted(pd.DatetimeIndex([pd.Timestamp(x) for x in load_fomc_days()])))
+    mpos = mpos[mpos < len(cal)]
+    hold = np.zeros(len(cal))
+    hold[mpos] = 1.0
+    hold[np.clip(mpos - 1, 0, None)] = 1.0
+    S["pre-FOMC drift (day before + FOMC day)"] = ex["SPY"] * hold
     assets = ["SPY", "TLT", "GLD", "DBC"]
     vol = r[assets].ewm(span=60).std() * np.sqrt(252)
     legs = [np.sign(C[a].pct_change(252)).shift(1) * (0.10 / vol[a]).clip(upper=2).shift(1) * ex[a] for a in assets]
@@ -279,11 +290,38 @@ def build_scenarios(d: Dict[str, pd.DataFrame], cpi: pd.Series, cal: pd.Datetime
     tpu = pd.Series(tpu.to_numpy(), index=tpu.index + pd.DateOffset(days=45))  # monthly, published with a lag
     tpu_d = tpu.reindex(tpu.index.union(cal)).ffill().reindex(cal)
     sc["trade policy uncertainty vs 3y median"] = np.where(tpu_d > tpu_d.rolling(756, min_periods=252).median() * 1.5, "high", "normal").astype(object)
+    # ---- breadth, concentration, more macro ------------------------------------------------
+    above = pd.DataFrame({s: C[s] > C[s].rolling(50).mean() for s in SECTORS}).sum(axis=1)
+    sc["sector breadth (# of 9 sectors above SMA50)"] = pd.cut(above, [-1, 3, 6, 9], labels=["weak 0-3", "mixed 4-6", "strong 7-9"]).astype(str)
+    ew = C["RSP"] / C["SPY"]
+    sc["equal-weight vs cap-weight (RSP/SPY vs SMA50)"] = np.where(ew > ew.rolling(50).mean(), "broadening (RSP leads)", "narrowing (mega caps lead)")
+    sc["USD/CNY 1-month move"] = shock(px("CNY=X"), "yuan surge (USDCNY down)", "yuan plunge (USDCNY up)")
+    sc["natural gas 1-month move"] = shock(px("NG=F"), "nat gas plunge", "nat gas surge")
+    og = px("CL=F") / px("GC=F")
+    sc["oil/gold ratio vs SMA50"] = np.where(og > og.rolling(50).mean(), "rising", "falling").astype(object)
+    sc.loc[og.rolling(50).mean().isna(), "oil/gold ratio vs SMA50"] = None
+    c30 = fred["DGS30"] - fred["DGS2"]
+    sc["2s30s curve level"] = pd.cut(c30, [-10, 0, 1, 10], labels=["inverted", "flat 0-1", "steep >1"]).astype(str)
+    sc["2s30s 3-month change"] = np.where(c30.diff(63) > 0, "steepening", "flattening")
+
+    # ---- calendar (known in advance) -----------------------------------------------------------
+    s_ = pd.Series(cal, index=cal)
+    third_fri = s_.apply(lambda d: d.replace(day=1) + pd.Timedelta(days=(4 - d.replace(day=1).weekday()) % 7 + 14))
+    opex_day = s_.groupby([s_.dt.year, s_.dt.month]).transform(lambda g: g[g <= third_fri.loc[g.index]].max())
+    week = s_.dt.isocalendar().week.astype(int)
+    opex_week = week == pd.Series(opex_day.dt.isocalendar().week.astype(int).to_numpy(), index=cal)
+    cal_sc = pd.DataFrame(index=cal)
+    cal_sc["options expiration (monthly)"] = np.where(s_ == opex_day, "opex day", np.where(opex_week, "opex week (other)", "other")).astype(object)
+    cal_sc["month of year"] = s_.dt.strftime("%m-%b")
+    cal_sc["day of week"] = s_.dt.strftime("%u-%a")
+
     out = sc.shift(1)  # market data: known at the prior close
     # The FOMC calendar is published in advance, and the decision series already starts on the
-    # session after the statement, so neither gets the extra one-day lag.
+    # session after the statement, so neither gets the extra one-day lag; same for the calendar.
     out["FOMC calendar"] = sc["FOMC calendar"]
     out["last FOMC decision"] = sc["last FOMC decision"]
+    for c in cal_sc:
+        out[c] = cal_sc[c]
     return out
 
 
