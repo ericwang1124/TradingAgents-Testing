@@ -24,6 +24,9 @@ def shadow_outcomes(day: date) -> Dict[str, Any]:
         return {"available": False}
     ctx = ctxs[0]
     out: Dict[str, Any] = {"available": True, "gap_pct": round(ctx.gap_pct * 100, 3)}
+    from .addon import shadow as addon_shadow
+
+    out["addon"] = addon_shadow(day, minutes)
     for name, params in {"live_signal": LIVE_PARAMS, **SHADOW_PARAMS}.items():
         sig = find_signal(ctx, params)
         if sig is None:
@@ -55,18 +58,24 @@ def summary_table() -> pd.DataFrame:
         b, d = journal.read(day, "briefing") or {}, journal.read(day, "decision") or {}
         e, ev = journal.read(day, "execution") or {}, journal.read(day, "evaluation") or {}
         live = (ev or {}).get("live_signal")
+        ad, adr = (ev or {}).get("addon") or {}, journal.read(day, "addon") or {}
+        core = journal.read(day, "core") or {}
         rows.append({
             "date": day.isoformat(),
-            "hard_no_go": b.get("hard_no_go"),
             "decision": d.get("decision", "—"),
             "confidence": d.get("confidence"),
             "regime": (b.get("regime") or {}).get("label"),
-            "gap_pct": (ev or {}).get("gap_pct"),
-            "signal": bool(live),
-            "shadow_R": live["r_multiple"] if live else np.nan,
+            "addon_efficiency": ad.get("efficiency"),
+            "addon_signal": ad.get("take"),
+            "addon_shadow_ret_%": ad.get("return_pct", np.nan),
+            "addon_traded": adr.get("traded", False),
+            "addon_pnl_usd": adr.get("pnl_usd", np.nan),
+            "core_gross": core.get("gross_exposure"),
+            "core_orders": len(core.get("orders", [])),
+            "fade_signal": bool(live),
+            "fade_shadow_R": live["r_multiple"] if live else np.nan,
             "traded": e.get("traded", False),
             "paper_pnl_usd": e.get("pnl_usd", np.nan),
-            "underlying_R": e.get("underlying_R", np.nan),
         })
     return pd.DataFrame(rows)
 
@@ -83,27 +92,28 @@ def write_summary() -> None:
     if df.empty:
         return
     df.to_csv(JOURNAL_DIR / "summary.csv", index=False)
-    sig = df[df["signal"]]
-    go = sig[sig["decision"] == "GO"]
-    no = sig[(sig["decision"] != "GO") | sig["hard_no_go"].fillna(False).astype(bool)]
+    sig = df[df["addon_signal"].fillna(False).astype(bool)]
+    go, no = sig[sig["decision"] == "GO"], sig[sig["decision"] != "GO"]
 
     def line(name, frame):
-        r = frame["shadow_R"].dropna()
-        return f"| {name} | {len(r)} | {r.mean():+.2f} | {r.sum():+.1f} |" if len(r) else f"| {name} | 0 | – | – |"
+        r = frame["addon_shadow_ret_%"].dropna()
+        return f"| {name} | {len(r)} | {r.mean():+.3f}% | {r.sum():+.2f}% |" if len(r) else f"| {name} | 0 | – | – |"
 
+    fade = df[df["fade_signal"]]
     lines = [
-        "# Opening reversal — forward test journal",
+        "# Forward test journal — core portfolio, intraday add-on, fade (shadow)",
         "",
-        f"Sessions logged: {len(df)}; signal days: {len(sig)}; GO decisions: {(df['decision'] == 'GO').sum()}; "
-        f"paper trades: {int(df['traded'].sum())}; paper P&L: ${df['paper_pnl_usd'].fillna(0).sum():,.0f}",
+        f"Sessions logged: {len(df)}; add-on signal days: {len(sig)}; GO decisions: {(df['decision'] == 'GO').sum()}; "
+        f"add-on trades: {int(df['addon_traded'].sum())}, P&L ${df['addon_pnl_usd'].fillna(0).sum():,.0f}; "
+        f"fade shadow signals: {len(fade)}, avg {fade['fade_shadow_R'].mean() if len(fade) else float('nan'):+.2f}R",
         "",
-        "Does the decision separate good signal days from bad ones? (shadow R = what the signal did, traded or not)",
+        "Does Claude's morning decision separate good add-on days from bad ones? (shadow return 10:00 -> 11:55, traded or not)",
         "",
-        "| group | signal days | avg shadow R | total |",
+        "| group | add-on signal days | avg shadow return | total |",
         "|---|---:|---:|---:|",
         line("decided GO", go),
-        line("NO_GO (decision or hard rule)", no),
-        line("all signal days", sig),
+        line("decided NO_GO", no),
+        line("all add-on signal days", sig),
         "",
         _table(df),
     ]

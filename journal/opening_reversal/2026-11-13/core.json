@@ -1,0 +1,185 @@
+{
+  "date": "2026-11-13",
+  "run_at": "2026-11-13T15:24:03.531066-05:00",
+  "equity": 100000.0,
+  "time_in_force": "cls",
+  "exposures": {
+    "BTC-USD": 0.0492,
+    "DBC": 0.0504,
+    "GLD": 0.0524,
+    "HYG": 0.147,
+    "IEF": 0.0898,
+    "IWM": 0.0283,
+    "QQQ": 0.0556,
+    "RSP": 0.0633,
+    "SPY": 0.1975,
+    "SVXY": 0.0179,
+    "TLT": 0.0647,
+    "UUP": 0.0675,
+    "XLK": 0.0499
+  },
+  "targets_usd": {
+    "IBIT": 4919.44,
+    "DBC": 5040.26,
+    "GLD": 5242.65,
+    "HYG": 14702.14,
+    "IEF": 8980.65,
+    "IWM": 2832.88,
+    "QQQ": 5555.54,
+    "RSP": 6330.31,
+    "SPY": 19746.03,
+    "SVXY": 1790.83,
+    "TLT": 6471.05,
+    "UUP": 6748.56,
+    "XLK": 4988.52
+  },
+  "gross_exposure": 0.933,
+  "orders": [
+    {
+      "symbol": "DBC",
+      "side": "buy",
+      "qty": 163,
+      "est_usd": 5018.77
+    },
+    {
+      "symbol": "GLD",
+      "side": "buy",
+      "qty": 14,
+      "est_usd": 4972.1
+    },
+    {
+      "symbol": "HYG",
+      "side": "buy",
+      "qty": 191,
+      "est_usd": 14698.4
+    },
+    {
+      "symbol": "IBIT",
+      "side": "buy",
+      "qty": 126,
+      "est_usd": 4917.15
+    },
+    {
+      "symbol": "IEF",
+      "side": "buy",
+      "qty": 99,
+      "est_usd": 8916.43
+    },
+    {
+      "symbol": "IWM",
+      "side": "buy",
+      "qty": 10,
+      "est_usd": 2774.25
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "qty": 8,
+      "est_usd": 5436.8
+    },
+    {
+      "symbol": "RSP",
+      "side": "buy",
+      "qty": 28,
+      "est_usd": 6187.72
+    },
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "qty": 26,
+      "est_usd": 19589.44
+    },
+    {
+      "symbol": "SVXY",
+      "side": "buy",
+      "qty": 30,
+      "est_usd": 1761.45
+    },
+    {
+      "symbol": "TLT",
+      "side": "buy",
+      "qty": 81,
+      "est_usd": 6426.54
+    },
+    {
+      "symbol": "UUP",
+      "side": "buy",
+      "qty": 228,
+      "est_usd": 6723.72
+    },
+    {
+      "symbol": "XLK",
+      "side": "buy",
+      "qty": 29,
+      "est_usd": 4937.54
+    }
+  ],
+  "submitted": [
+    {
+      "symbol": "DBC",
+      "id": "d60ecd5a-f0b7-4676-b01d-716645438336",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "GLD",
+      "id": "556aa14c-63ac-414b-bae8-6cfd9401d5de",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "HYG",
+      "id": "9e251b50-a452-4bad-902b-46138681e508",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "IBIT",
+      "id": "c621ff90-25e1-4c53-ba83-15cf92ee08de",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "IEF",
+      "id": "11a24016-2b1a-43cf-ba8a-481b66b3e279",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "IWM",
+      "id": "9f7bc576-9272-4fde-9ea5-d0f501578d09",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "QQQ",
+      "id": "8e02c7db-bf29-4289-954c-7e1c358fcd2c",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "RSP",
+      "id": "e8e04c92-45df-44be-98a5-69472d24aed7",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "SPY",
+      "id": "f8b5aff4-17c4-4181-8ea5-6124b8e8ccc0",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "SVXY",
+      "id": "713d65e7-37cf-4cf7-9da0-546e69254f06",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "TLT",
+      "id": "ff1967c6-54b1-4395-b93a-164521908eee",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "UUP",
+      "id": "f3e521cd-7942-4272-b777-2b458b549cad",
+      "status": "pending_new"
+    },
+    {
+      "symbol": "XLK",
+      "id": "be01e95f-0d6e-4e35-ba32-dddcb312a6e1",
+      "status": "pending_new"
+    }
+  ],
+  "dry_run": false
+}

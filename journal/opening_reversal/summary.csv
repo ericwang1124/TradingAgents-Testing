@@ -1,0 +1,2 @@
+date,decision,confidence,regime,addon_efficiency,addon_signal,addon_shadow_ret_%,addon_traded,addon_pnl_usd,core_gross,core_orders,fade_signal,fade_shadow_R,traded,paper_pnl_usd
+2026-11-13,NO_GO,0.95,down/vix15-20,0.4159642307410539,False,,False,,0.933,13,False,,False,

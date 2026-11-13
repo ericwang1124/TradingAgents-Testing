@@ -21,10 +21,13 @@ import pandas as pd
 
 ETFS = ["SPY", "QQQ", "IWM", "RSP", "TLT", "IEF", "GLD", "DBC", "UUP", "HYG", "USO", "XLK", "SVXY", "FXE", "FXY"]
 SECTORS = ["XLU", "XLP", "XLV", "XLY", "XLK", "XLI", "XLE", "XLF", "XLB"]
-UNIVERSE = sorted(set(ETFS + SECTORS + ["BIL"]))
+UNIVERSE = sorted(set(ETFS + SECTORS + ["BIL", "BTC-USD"]))
+# backtest series -> instrument actually traded (bitcoin is held through the spot ETF in market hours)
+LIVE_TICKER = {"BTC-USD": "IBIT"}
 TARGET_STRAT_VOL = 0.10
 PORTFOLIO_VOL = 0.10
 MAX_GROSS = 2.0
+LEVERAGE = 2.0   # constant multiplier on the combined book (vol targeting tested worse: 0.70 vs 0.73)
 
 
 def _rsi(c: pd.Series, n: int = 2) -> pd.Series:
@@ -63,7 +66,7 @@ def strategy_positions(C: pd.DataFrame, H: pd.Series, L: pd.Series, sessions: pd
     P["SPY 1-month momentum (21d ret > 0)"] = _one(idx, "SPY", (spy.pct_change(21) > 0).astype(float))
     # turn of month: hold over the next session if it is the month's last trading day or among its first 3
     s = pd.Series(sessions, index=sessions)
-    last_day = s.dt.month != s.dt.month.shift(-1)
+    last_day = (s.dt.month != s.dt.month.shift(-1)) & s.shift(-1).notna()  # unknown next session != month end
     nth = s.groupby([s.dt.year, s.dt.month]).cumcount() + 1
     tom = (last_day | (nth <= 3)).astype(float)
     nxt = tom.shift(-1).reindex(idx)  # position decided at close t applies to session t+1
@@ -97,6 +100,8 @@ def strategy_positions(C: pd.DataFrame, H: pd.Series, L: pd.Series, sessions: pd
     sm["SPY"] = -1.0
     P["sector momentum: top-3 minus SPY"] = sm
     P["short VIX futures (SVXY)"] = _one(idx, "SVXY", 1.0)
+    if "BTC-USD" in C.columns:
+        P["long bitcoin"] = _one(idx, "BTC-USD", 1.0)
     return P
 
 
@@ -137,7 +142,7 @@ def combine(P: Dict[str, pd.DataFrame], weights: pd.DataFrame, scale_: pd.DataFr
 
 
 def backtest(C: pd.DataFrame, H: pd.Series, L: pd.Series, years: List[int], long_only: bool = True,
-             multiplier: pd.Series = None) -> Dict[str, pd.Series]:
+             multiplier: pd.Series = None, vol_target: bool = False) -> Dict[str, pd.Series]:
     """Walk-forward core portfolio on ETF positions. Returns daily excess returns and diagnostics."""
     P = strategy_positions(C, H, L, C.index)
     R = strategy_returns(P, C)
@@ -151,9 +156,13 @@ def backtest(C: pd.DataFrame, H: pd.Series, L: pd.Series, years: List[int], long
     r = C.pct_change()
     ex = r.sub(r["BIL"].fillna(0.0), axis=0)
     raw = (E.shift(1) * ex[E.columns]).sum(axis=1)
-    pvol = raw.rolling(60, min_periods=40).std() * np.sqrt(252)
     gross = E.abs().sum(axis=1)
-    lev = (PORTFOLIO_VOL / pvol).clip(upper=MAX_GROSS / gross.replace(0, np.nan)).fillna(0.0)
+    cap = MAX_GROSS / gross.replace(0, np.nan)
+    if vol_target:
+        pvol = raw.rolling(60, min_periods=40).std() * np.sqrt(252)
+        lev = (PORTFOLIO_VOL / pvol).clip(upper=cap).fillna(0.0)
+    else:
+        lev = pd.Series(LEVERAGE, index=E.index).clip(upper=cap).fillna(0.0)
     if multiplier is not None:
         lev = (lev * multiplier.reindex(lev.index).fillna(1.0)).clip(upper=MAX_GROSS / gross.replace(0, np.nan)).fillna(0.0)
     Ef = E.mul(lev, axis=0)

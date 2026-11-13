@@ -84,6 +84,10 @@ class AlpacaClient:
     def latest_trade_price(self, symbol: str, feed: str = "iex") -> float:
         return float(self._data(f"/v2/stocks/{symbol}/trades/latest", feed=feed)["trade"]["p"])
 
+    def latest_prices(self, symbols: List[str], feed: str = "iex") -> Dict[str, float]:
+        payload = self._data("/v2/stocks/trades/latest", symbols=",".join(symbols), feed=feed)
+        return {s: float(t["p"]) for s, t in (payload.get("trades") or {}).items()}
+
     def news(self, symbols: str, start: datetime, limit: int = 50) -> List[dict]:
         payload = self._data("/v1beta1/news", symbols=symbols, start=start.strftime("%Y-%m-%dT%H:%M:%SZ"),
                              limit=limit, sort="desc")
@@ -102,9 +106,11 @@ class AlpacaClient:
         return {"bid": float(q.get("bp") or 0.0), "ask": float(q.get("ap") or 0.0)}
 
     # --- orders / positions --------------------------------------------------------------------
-    def submit_order(self, symbol: str, qty: int, side: str, order_type: str = "market",
-                     limit_price: Optional[float] = None, client_order_id: Optional[str] = None) -> dict:
-        body = {"symbol": symbol, "qty": str(qty), "side": side, "type": order_type, "time_in_force": "day"}
+    def submit_order(self, symbol: str, qty: float, side: str, order_type: str = "market",
+                     limit_price: Optional[float] = None, client_order_id: Optional[str] = None,
+                     time_in_force: str = "day") -> dict:
+        """``time_in_force="cls"`` = market-on-close (whole shares only)."""
+        body = {"symbol": symbol, "qty": str(qty), "side": side, "type": order_type, "time_in_force": time_in_force}
         if limit_price is not None:
             body["limit_price"] = f"{limit_price:.2f}"
         if client_order_id:

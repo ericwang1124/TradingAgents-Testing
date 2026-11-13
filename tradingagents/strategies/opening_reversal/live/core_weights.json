@@ -1,0 +1,27 @@
+{
+  "year": 2026,
+  "weights": {
+    "long SPY": 0.055544724107076296,
+    "long QQQ": 0.0665297512748621,
+    "long IWM": 0.025319778173263415,
+    "long RSP": 0.04023690374933,
+    "SPY trend: above SMA200": 0.04776501894029579,
+    "SPY trend: above SMA50": 0.03567245179799544,
+    "SPY 1-month momentum (21d ret > 0)": 0.04594235136226607,
+    "turn of month (last day + first 3)": 0.010038981151690985,
+    "MR: RSI(2)<10 until RSI(2)>70": 0.05578682084309037,
+    "MR: after 3 down days, exit on up close": 0.0809136604293645,
+    "MR: IBS<0.2, hold 1 day": 0.05913730556790714,
+    "long bonds TLT": 0.023722951376409403,
+    "long bonds IEF": 0.027648495425019664,
+    "long gold": 0.05248200945076671,
+    "long US dollar UUP": 0.017161392498771643,
+    "long high yield HYG": 0.030069508195976178,
+    "trend: TSMOM SPY/TLT/GLD/DBC": 0.040558400303698124,
+    "risk parity SPY/TLT/GLD/DBC": 0.05642475691037758,
+    "dual momentum: best of SPY/TLT/GLD/DBC": 0.04828513004476226,
+    "tech - market (XLK-SPY)": 0.048328197928420524,
+    "short VIX futures (SVXY)": 0.038004574993286834,
+    "long bitcoin": 0.09442683547536894
+  }
+}
