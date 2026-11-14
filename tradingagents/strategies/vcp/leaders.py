@@ -217,8 +217,9 @@ def results(ctx, period, specs: Dict[str, Tuple[np.ndarray, np.ndarray]]) -> pd.
     return pd.DataFrame(rows).T
 
 
-def item_record(ctx, ev: pd.DataFrame, items: pd.DataFrame, period) -> pd.DataFrame:
-    """Every event bought at its confirmed close, no score filter: average R when an item is high vs low."""
+def item_record(ctx, ev: pd.DataFrame, items: pd.DataFrame, period, mk: pd.DataFrame = None) -> pd.DataFrame:
+    """Every event bought at its confirmed close, no score filter: average R when an item is high vs low.
+    With ``mk`` the same split is shown for the market's state on the day before the breakout."""
     sim = run(ctx, period, mask_from(ctx, ev, np.ones(len(ev), dtype=bool)), np.ones(len(ctx["ind"]["C"])), entry="close_breakout")
     tr = sim["trades"]
     if not len(tr):
@@ -229,9 +230,16 @@ def item_record(ctx, ev: pd.DataFrame, items: pd.DataFrame, period) -> pd.DataFr
     ok = ~np.isnan(idx)
     it = items.loc[idx[ok].astype(int)].reset_index(drop=True)
     R = tr.loc[ok, "R_mult"].reset_index(drop=True)
+    extra = []
+    if mk is not None:
+        prev = ev.loc[idx[ok].astype(int), "b"].to_numpy() - 1
+        it["market: environment E >= 3"] = (mk["E"].to_numpy()[prev] >= 3).astype(float)
+        it["market: reversal window"] = mk["reversal"].to_numpy()[prev].astype(float)
+        it["market: half or more recent breakouts held"] = (np.nan_to_num(mk["follow"].to_numpy()[prev], nan=0.0) >= 0.5).astype(float)
+        extra = [c for c in it.columns if c.startswith("market:")]
     out = {}
-    for c in ALL_ITEMS + ["score7", "score12"]:
-        hi = it[c] >= (0.5 if c in ALL_ITEMS else it[c].quantile(0.75))
+    for c in ALL_ITEMS + ["score7", "score12"] + extra:
+        hi = it[c] >= (it[c].quantile(0.75) if c in ("score7", "score12") else 0.5)
         a, b = R[hi], R[~hi]
         se = np.sqrt(a.var() / max(len(a), 1) + b.var() / max(len(b), 1)) if len(a) > 2 and len(b) > 2 else np.nan
         out[c] = {"n high": int(hi.sum()), "avg R high": a.mean(), "n low": int((~hi).sum()), "avg R low": b.mean(),
@@ -276,7 +284,7 @@ def main(argv=None) -> None:
              f"{float(mkt_dev['reversal'].mean()) * 100:.0f}% of days.", "",
              "## Development 2017-2021", "", dev.round(2).to_markdown(), "", f"Frozen for the holdout: **{frozen}**", "",
              "Each item's own record, development (all events bought at the confirmed close, no score filter):", "",
-             item_record(ctx, ev, items, DEV).round(2).to_markdown(), ""]
+             item_record(ctx, ev, items, DEV, mk).round(2).to_markdown(), ""]
     if args.holdout and frozen:
         hold = results(ctx, HOLD, {**cands, **ref})
         whole = results(ctx, (DEV[0], None), {frozen: cands[frozen], **ref})
@@ -286,7 +294,7 @@ def main(argv=None) -> None:
                                                            avg_R=("R_mult", "mean")) if len(tr) else pd.DataFrame()
         lines += ["## Holdout 2022-2026 (run once)", "", f"The result is the row **{frozen}**; the others are for information.", "",
                   hold.round(2).to_markdown(), "", "Each item's own record, holdout:", "",
-                  item_record(ctx, ev, items, HOLD).round(2).to_markdown(), "",
+                  item_record(ctx, ev, items, HOLD, mk).round(2).to_markdown(), "",
                   "## Whole period 2017-2026, for reference", "", whole.round(2).to_markdown(), "",
                   "Trades of the frozen candidate by entry year:", "", yearly.round(2).to_markdown(), "",
                   "## Added to the live core (whole-period stream, walk-forward weights)", "",
