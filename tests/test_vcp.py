@@ -65,3 +65,18 @@ def test_stop_exit_caps_the_loss_near_r():
     tr = sim["trades"]
     assert len(tr) == 1 and tr["reason"].iloc[0] == "stop"
     assert -0.09 < tr["ret"].iloc[0] < 0                                 # about -R (R capped at 8%) plus costs
+
+
+def test_to_matrices_splits_reused_tickers_and_drops_spy():
+    from tradingagents.strategies.vcp import data as vd
+
+    cal = pd.bdate_range("2020-01-01", periods=120)
+    rows = [("SPY", d, 1.0, 1.0, 1.0, 1.0, 10.0) for d in cal]
+    rows += [("AAA", d, 5.0, 5.5, 4.5, 5.0, 100.0) for d in cal]                       # continuous
+    rows += [("BBB", d, 9.0, 9.5, 8.5, 9.0, 50.0) for d in cal[:20]]                    # old company
+    rows += [("BBB", d, 2.0, 2.5, 1.5, 2.0, 70.0) for d in cal[80:]]                    # ticker reused 60 sessions later
+    daily = pd.DataFrame(rows, columns=["symbol", "date", "open", "high", "low", "close", "volume"])
+    m = vd.to_matrices(daily.sample(frac=1.0, random_state=0))
+    assert list(m["close"].columns) == ["AAA", "BBB~1", "BBB~2"] and len(m["close"]) == 120
+    assert m["close"]["BBB~1"].notna().sum() == 20 and m["close"]["BBB~2"].notna().sum() == 40
+    assert m["close"]["BBB~1"].iloc[25:].isna().all() and float(m["close"]["BBB~2"].iloc[-1]) == 2.0

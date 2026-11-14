@@ -99,25 +99,20 @@ def prefilter(monthly: pd.DataFrame) -> List[str]:
 
 
 def to_matrices(daily: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-    cal = pd.DatetimeIndex(sorted(daily.loc[daily["symbol"] == "SPY", "date"].unique())) if (daily["symbol"] == "SPY").any() \
+    """Date x column matrices. SPY (if present) only supplies the session calendar and is dropped."""
+    has_spy = (daily["symbol"] == "SPY").any()
+    cal = pd.DatetimeIndex(sorted(daily.loc[daily["symbol"] == "SPY", "date"].unique())) if has_spy \
         else pd.DatetimeIndex(sorted(daily["date"].unique()))
     pos = pd.Series(np.arange(len(cal)), index=cal)
-    pieces = []
-    for sym, g in daily.groupby("symbol", sort=False):
-        g = g[g["date"].isin(cal)].sort_values("date")
-        if g.empty:
-            continue
-        k = pos[g["date"]].to_numpy()
-        breaks = np.where(np.diff(k) > GAP_SESSIONS)[0]
-        if len(breaks) == 0:
-            pieces.append((sym, g))
-        else:
-            for n, part in enumerate(np.split(g, breaks + 1), start=1):
-                pieces.append((f"{sym}~{n}", part))
-    out = {}
-    for f in ("open", "high", "low", "close", "volume"):
-        out[f] = pd.DataFrame({s: g.set_index("date")[f] for s, g in pieces}).reindex(cal).astype("float32")
-    return out
+    d = daily[daily["date"].isin(cal) & (daily["symbol"] != "SPY")].sort_values(["symbol", "date"]).reset_index(drop=True)
+    k = pos.reindex(d["date"]).to_numpy()
+    same_sym = d["symbol"].eq(d["symbol"].shift()).to_numpy()
+    gap = (np.diff(k, prepend=k[0]) > GAP_SESSIONS) & same_sym
+    piece_no = pd.Series(gap.astype(int)).groupby(d["symbol"]).cumsum() + 1
+    n_pieces = piece_no.groupby(d["symbol"]).transform("max")
+    d["col"] = np.where(n_pieces > 1, d["symbol"] + "~" + piece_no.astype(str), d["symbol"])
+    return {f: d.pivot(index="date", columns="col", values=f).reindex(cal).astype("float32")
+            for f in ("open", "high", "low", "close", "volume")}
 
 
 def save(mats: Dict[str, pd.DataFrame]) -> None:
@@ -133,16 +128,34 @@ def load() -> Dict[str, pd.DataFrame]:
     return {f: pd.DataFrame(z[f], index=idx, columns=cols) for f in ("open", "high", "low", "close", "volume")}
 
 
+def daily_bars_checkpointed(symbols: List[str], batch: int = 200) -> pd.DataFrame:
+    """Daily bars, one file per batch of symbols, so an interrupted or failed run resumes where it stopped."""
+    parts = CACHE / "daily_parts"
+    parts.mkdir(parents=True, exist_ok=True)
+    frames = []
+    for i in range(0, len(symbols), batch):
+        path = parts / f"{i:05d}.csv.gz"
+        if not path.exists():
+            df = bars(symbols[i:i + batch], "1Day", batch=batch)
+            df.to_csv(path, index=False)
+        frames.append(pd.read_csv(path, parse_dates=["date"]))
+        print(f"1Day parts: {min(i + batch, len(symbols))}/{len(symbols)} symbols on disk", flush=True)
+    return pd.concat(frames, ignore_index=True)
+
+
 def main() -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
-    assets = stock_assets()
-    assets.to_csv(CACHE / "assets.csv", index=False)
-    print(f"{len(assets)} stock assets ({(assets['status'] == 'inactive').sum()} inactive)")
-    monthly = bars(assets["symbol"].tolist(), "1Month")
-    monthly.to_csv(CACHE / "monthly.csv.gz", index=False)
+    if (CACHE / "monthly.csv.gz").exists():
+        monthly = pd.read_csv(CACHE / "monthly.csv.gz", parse_dates=["date"])
+    else:
+        assets = stock_assets()
+        assets.to_csv(CACHE / "assets.csv", index=False)
+        print(f"{len(assets)} stock assets ({(assets['status'] == 'inactive').sum()} inactive)")
+        monthly = bars(assets["symbol"].tolist(), "1Month")
+        monthly.to_csv(CACHE / "monthly.csv.gz", index=False)
     keep = prefilter(monthly)
     print(f"{len(keep)} symbols pass the liquidity pre-filter")
-    daily = bars(sorted(set(keep) | {"SPY"}), "1Day")
+    daily = daily_bars_checkpointed(sorted(set(keep) | {"SPY"}))
     mats = to_matrices(daily)
     save(mats)
     print(f"saved {mats['close'].shape[1]} columns x {mats['close'].shape[0]} sessions to {CACHE}")
