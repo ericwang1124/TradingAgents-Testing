@@ -219,4 +219,5 @@ __marimo__/
 **/data_cache/
 
 # Strategy backtest outputs
-results/opening_reversal/
+results/opening_reversal/*
+!results/opening_reversal/*.md
