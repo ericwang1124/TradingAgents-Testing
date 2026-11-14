@@ -80,3 +80,17 @@ def test_to_matrices_splits_reused_tickers_and_drops_spy():
     assert list(m["close"].columns) == ["AAA", "BBB~1", "BBB~2"] and len(m["close"]) == 120
     assert m["close"]["BBB~1"].notna().sum() == 20 and m["close"]["BBB~2"].notna().sum() == 40
     assert m["close"]["BBB~1"].iloc[25:].isna().all() and float(m["close"]["BBB~2"].iloc[-1]) == 2.0
+
+
+def test_rawclose_undoes_split_adjustment_for_price_filters():
+    from tradingagents.strategies.vcp import data as vd
+
+    cal = pd.bdate_range("2020-01-01", "2020-02-28")
+    # traded at 100 in January, split 2:1 on Feb 3, traded at 50 after: the adjusted series is 50 throughout
+    daily = pd.DataFrame([("AAA", d, 50.0, 50.0, 50.0, 50.0, 10.0) for d in cal],
+                         columns=["symbol", "date", "open", "high", "low", "close", "volume"])
+    monthly_raw = pd.DataFrame({"symbol": ["AAA", "AAA"], "date": pd.to_datetime(["2020-01-01", "2020-02-01"]),
+                                "close": [100.0, 50.0], "volume": [1.0, 1.0]})
+    m = vd.to_matrices(daily, monthly_raw)
+    assert float(m["rawclose"]["AAA"].loc["2020-01-15"]) == 100.0 and float(m["rawclose"]["AAA"].loc["2020-02-14"]) == 50.0
+    assert float(m["close"]["AAA"].loc["2020-01-15"]) == 50.0

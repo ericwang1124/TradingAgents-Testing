@@ -4,7 +4,7 @@
 
 Rules (fixed before the first run; the PRIMARY variant decides adoption):
 
-Universe on day t: close >= $10, 50-day average dollar volume >= $20M, >= 240 closes in the past year.
+Universe on day t: unadjusted close >= $10, 50-day average dollar volume >= $20M, >= 240 closes in the past year.
 Trend template at t (Minervini's eight conditions): close > SMA150 and SMA200; SMA150 > SMA200;
   SMA200 above its value 21 sessions earlier; SMA50 > SMA150 and SMA200; close > SMA50;
   close >= 1.30 x 52-week low; close >= 0.75 x 52-week high; RS rating >= 70, where RS rating is the
@@ -76,7 +76,8 @@ def indicators(M: Dict[str, pd.DataFrame], p: Params) -> Dict[str, pd.DataFrame]
     dv50 = (C * V).rolling(50, min_periods=45).mean()
     v50 = V.rolling(50, min_periods=45).mean()
     hist = C.notna().rolling(252, min_periods=1).sum()
-    universe = (C >= p.min_price) & (dv50 >= p.min_dv) & (hist >= 240)
+    raw = M["rawclose"].astype("float64") if "rawclose" in M else C        # price actually traded, for the $ filter
+    universe = (raw >= p.min_price) & (dv50 >= p.min_dv) & (hist >= 240)
     s50, s150, s200 = (C.rolling(n, min_periods=n).mean() for n in (50, 150, 200))
     hi252, lo252 = H.rolling(252, min_periods=240).max(), L.rolling(252, min_periods=240).min()
     rs_raw = 0.4 * C.pct_change(63) + 0.2 * C.pct_change(126) + 0.2 * C.pct_change(189) + 0.2 * C.pct_change(252)

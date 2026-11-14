@@ -5,7 +5,7 @@
 Translated from the user's notes on J Law's method. Written and committed before the first run on
 real data. PRIMARY decides; the other rows are reported for information, not to pick a winner.
 
-1. Screen at each close: price >= $12; 50-day average dollar volume >= $20M; >= 240 closes in the
+1. Screen at each close: unadjusted price >= $12; 50-day average dollar volume >= $20M; >= 240 closes in the
    past year; close > SMA50 > SMA200, both averages above their value 21 sessions earlier; close within
    15% of the 52-week high; 1-year return in the top 20% of the day's universe.
 2. Pattern at the close of t, over the past 250 sessions: start at the highest high, take the lowest
@@ -104,7 +104,8 @@ def prepare(M: Dict[str, pd.DataFrame], p: JParams) -> Dict[str, pd.DataFrame]:
     dv50 = (C * V).rolling(50, min_periods=45).mean()
     v50 = V.rolling(50, min_periods=45).mean()
     hist = C.notna().rolling(252, min_periods=1).sum()
-    universe = (C >= p.min_price) & (dv50 >= p.min_dv) & (hist >= 240)
+    raw = M["rawclose"].astype("float64") if "rawclose" in M else C        # price actually traded, for the $ filter
+    universe = (raw >= p.min_price) & (dv50 >= p.min_dv) & (hist >= 240)
     s10, s20, s50, s200 = (C.rolling(n, min_periods=n).mean() for n in (10, 20, 50, 200))
     hi252 = H.rolling(252, min_periods=240).max()
     rs = C.pct_change(252, fill_method=None).where(universe).rank(axis=1, pct=True) * 100
