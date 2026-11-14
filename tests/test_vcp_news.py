@@ -39,3 +39,23 @@ def test_signals_use_only_what_was_published_before_the_cutoff():
     assert after["guidance"] == 1.0 and after["analyst"] == 1.0 and after["report"] == 78.0
     stale = news.signals(items, pd.Timestamp("2023-10-15 19:00"))            # the May report is more than 95 days old
     assert stale["eps"] != stale["eps"]
+
+
+def test_combo_search_ranks_subsets_by_training_and_scores_them_on_test():
+    import numpy as np
+    from tradingagents.strategies.vcp import combos
+
+    B = combos.all_subsets(3)
+    assert B.shape == (7, 3) and B[0].tolist() == [1, 0, 0] and B[2].tolist() == [1, 1, 0] and B[6].tolist() == [1, 1, 1]
+    rng = np.random.default_rng(0)
+    n = 400
+    X = np.c_[rng.random(n) > 0.75, rng.random(n) > 0.75, rng.random(n) > 0.75].astype(np.float32)
+    R = rng.normal(0, 1, n) + 1.5 * X[:, 0]                    # only the first ingredient matters
+    R[::10] = np.nan                                           # some events never trade
+    train = np.arange(n) < 200
+    res = combos.evaluate(X, R, train, ~train, B, chunk=4)
+    pick = X[:, 0] >= np.quantile(X[train, 0], 0.75)
+    m = pick & train & ~np.isnan(R)
+    assert res.loc[0, "n_tr"] == m.sum() and abs(res.loc[0, "mean_tr"] - R[m].mean()) < 1e-6
+    assert res.loc[0, "mean_te"] > 1.0 and res.loc[1, "mean_te"] < 0.6          # ingredient 1 holds out of sample, ingredient 2 does not
+    assert res["t_tr"].idxmax() in (0, 2, 4, 6)                                 # every top subset contains ingredient 1
