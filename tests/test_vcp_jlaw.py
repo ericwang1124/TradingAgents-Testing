@@ -85,3 +85,40 @@ def test_breakout_entry_is_sold_the_same_day_without_volume():
     ind2, *_ = _ind()
     tr2 = jl.simulate(ind2, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)["trades"]
     assert tr2["kind"].iloc[0] == "breakout" and abs(tr2["entry"].iloc[0] - 58.5 * 1.0005) < 1e-9 and tr2["days"].iloc[0] > 5
+
+
+def test_confirmed_pullback_waits_for_a_move_above_the_pullback_day_high():
+    ind, idx, spy, vol, rf = _ind()
+    ind["O"].iloc[9] = 59.8                                            # day after the quiet pullback: opens near its high, trades through
+    p = jl.JParams(entry="confirm_pullback", start=str(idx[1].date()))
+    tr = jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)["trades"]
+    trig = 59.4 * 1.005                                                # high of the pullback day (day 8)
+    assert len(tr) == 1 and tr["entry_date"].iloc[0] == idx[9]
+    assert abs(tr["entry"].iloc[0] - max(59.8, trig) * 1.0005) < 1e-9
+    ind2, *_ = _ind()                                                  # unchanged data: day 9 opens more than 2% above the trigger
+    ind2["C"].iloc[9:13] = 59.0                                        # and the next days never trade above it
+    ind2["H"].iloc[9:13] = 59.3
+    ind2["O"].iloc[9:13] = 59.0
+    ind2["L"].iloc[9:13] = 58.8
+    assert len(jl.simulate(ind2, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)["trades"]) == 0     # no confirmation, no trade
+    assert len(jl.simulate(ind2, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, jl.JParams(start=str(idx[1].date())))["trades"]) == 1
+
+
+def test_close_breakout_buys_the_confirmed_close_only():
+    ind, idx, spy, vol, rf = _ind()
+    p = jl.JParams(entry="close_breakout", start=str(idx[1].date()))
+    tr = jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)["trades"]
+    assert len(tr) == 1 and tr["entry_date"].iloc[0] == idx[5] and abs(tr["entry"].iloc[0] - 60.0 * 1.0005) < 1e-9
+    ind["V"].iloc[5] = 0.5                                             # same price action on light volume
+    assert len(jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)["trades"]) == 0
+
+
+def test_flex_score_and_bounds():
+    from tradingagents.strategies.vcp import jlaw_flex as jf
+
+    F = pd.DataFrame({"t": [100, 100], "j": [0, 1], "has": [True, True], "n": [3, 2], "d_first": [0.25, 0.12],
+                      "d_last": [0.06, 0.12], "deepest": [0.25, 0.12], "base": [40, 10], "pivot_age": [5, 5],
+                      "low_before": [True, True], "volr": [0.6, 1.2], "rs": [100.0, 80.0], "touches": [2, 0], "catalyst": [1.0, 0.0]})
+    s = jf.score(F)
+    assert s["total"].tolist() == [7.0, 0.0]
+    assert jf.bounded(F).tolist() == [True, False]                     # second base is only 10 sessions long

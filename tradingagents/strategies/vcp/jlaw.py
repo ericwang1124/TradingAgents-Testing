@@ -77,8 +77,11 @@ class JParams:
     min_contractions: int = 2
     min_base: int = 15
     pivot_age: int = 3
-    entry: str = "pullback"            # "pullback", "breakout" or "both"
+    entry: str = "pullback"            # "pullback", "breakout", "both"; flexible version: "close_breakout",
+    #                                    "confirm_pullback" or "flex" (both of those)
     chase_max: float = 0.02
+    close_chase: float = 0.05          # close-confirmed breakout: bought only within this distance above the pivot
+    arm_days: int = 3                  # confirmed pullback: sessions the buy-stop above the pullback day's high stays live
     pb_window: int = 15
     pb_above: float = 0.02
     pb_below: float = 0.03
@@ -96,6 +99,11 @@ class JParams:
     target_r: Optional[float] = None
     cost: float = 5.0 / 1e4
     start: str = "2017-01-01"
+    end: Optional[str] = None
+
+
+INTRADAY_BREAKOUT, CLOSE_BREAKOUT = ("breakout", "both"), ("close_breakout", "flex")
+TOUCH_PULLBACK, CONFIRM_PULLBACK = ("pullback", "both"), ("confirm_pullback", "flex")
 
 
 # ------------------------------------------------------------------ screen
@@ -141,7 +149,7 @@ def scan(H: np.ndarray, L: np.ndarray, V: np.ndarray, v50: np.ndarray, rs: np.nd
     """Every (day, stock) that passes the screen and shows at least two contractions."""
     Hn = np.where(np.isnan(H), -np.inf, H)
     Ln = np.where(np.isnan(L), np.inf, L)
-    ts, js, piv, piv_idx, low, low_idx, volr, rss, deps, his = ([] for _ in range(10))
+    ts, js, piv, piv_idx, low, low_idx, volr, rss, deps, his, hvs = ([] for _ in range(11))
     for j in range(Hn.shape[1]):
         idx = np.flatnonzero(screen[:, j])
         idx = idx[idx >= i_start]
@@ -156,16 +164,19 @@ def scan(H: np.ndarray, L: np.ndarray, V: np.ndarray, v50: np.ndarray, rs: np.nd
             seq = seq[-MAX_K:]
             d = np.full(MAX_K, np.nan, dtype=np.float32)
             hi = np.full(MAX_K, -1, dtype=np.int32)
+            hv = np.full(MAX_K, np.nan, dtype=np.float32)
             d[:len(seq)] = [x[2] for x in seq]
             hi[:len(seq)] = [x[0] for x in seq]
+            hv[:len(seq)] = [h[x[0]] for x in seq]
             ts.append(t); js.append(j); piv.append(h[a]); piv_idx.append(a); low.append(l[i_lo]); low_idx.append(i_lo)
             volr.append(np.nanmean(v[a + 1:i_lo + 1]) / v50[t, j] if v50[t, j] > 0 else np.nan)
-            rss.append(rs[t, j]); deps.append(d); his.append(hi)
+            rss.append(rs[t, j]); deps.append(d); his.append(hi); hvs.append(hv)
     return {"t": np.asarray(ts, dtype=np.int32), "j": np.asarray(js, dtype=np.int32), "pivot": np.asarray(piv),
             "piv_idx": np.asarray(piv_idx, dtype=np.int32), "low": np.asarray(low),
             "low_idx": np.asarray(low_idx, dtype=np.int32), "volr": np.asarray(volr), "rs": np.asarray(rss),
             "depths": np.asarray(deps, dtype=np.float32).reshape(-1, MAX_K),
-            "his": np.asarray(his, dtype=np.int32).reshape(-1, MAX_K)}
+            "his": np.asarray(his, dtype=np.int32).reshape(-1, MAX_K),
+            "hvals": np.asarray(hvs, dtype=np.float32).reshape(-1, MAX_K)}
 
 
 def select(S: Dict[str, np.ndarray], p: JParams) -> Dict[int, List[Tuple[int, float, float]]]:
@@ -215,9 +226,10 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
     rfn = rf.reindex(dates).fillna(0.0).to_numpy()
     T = len(dates)
     i0 = int(np.searchsorted(dates, pd.Timestamp(p.start)))
+    t_end = T if p.end is None else int(np.searchsorted(dates, pd.Timestamp(p.end), side="right"))
     cash, eq_last = 1.0, 1.0
     positions: Dict[int, Pos] = {}
-    pending: Dict[int, Tuple[float, int]] = {}
+    pending: Dict[int, list] = {}                            # stock -> [pivot, breakout day, armed day, trigger, stop level]
     recent: deque = deque(maxlen=10)
     last_px: Dict[int, float] = {}
     equity, gross, trades = [], [], []
@@ -229,7 +241,7 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
         trades.append((syms[j], dates[ps.entry_i], dates[t], ps.kind, ps.entry, px, ps.r, reason, t - ps.entry_i))
         recent.append(1 if px > ps.entry else 0)
 
-    for t in range(max(i0, 1), T):
+    for t in range(max(i0, 1), t_end):
         cash *= 1 + rfn[t]
         # ---- exits for positions carried into today
         for j in list(positions):
@@ -257,31 +269,39 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
         if p.dist_days and dist[t - 1] >= 4:
             mult *= 0.5
         allowed = (not p.spy200) or bool(spy_ok[t - 1])
-        cands = []                                           # (rs, j, kind, price, stop, confirmed)
+        cands = []                                           # (rs, j, kind, price, stop, confirmed, bought intraday)
         for j, P, low_p in by_day.get(t - 1, ()):
             c, o, h, v = Cn[t, j], On[t, j], Hn[t, j], Vn[t, j]
             if np.isnan(c) or np.isnan(o):
                 continue
             confirmed = bool(c > P and v > Vn[t - 1, j] and v > v50[t - 1, j])
-            if confirmed and p.entry in ("pullback", "both"):
-                pending[j] = (P, t)
-            if p.entry in ("breakout", "both") and h > P and o <= P * (1 + p.chase_max):
-                cands.append((rs[t - 1, j], j, "breakout", max(o, P), low_p * (1 - p.stop_pad), confirmed))
-        for j, (P, b) in list(pending.items()):
+            if confirmed and p.entry in TOUCH_PULLBACK + CONFIRM_PULLBACK:
+                pending[j] = [P, t, -1, np.nan, np.nan]
+            if p.entry in INTRADAY_BREAKOUT and h > P and o <= P * (1 + p.chase_max):
+                cands.append((rs[t - 1, j], j, "breakout", max(o, P), low_p * (1 - p.stop_pad), confirmed, True))
+            if p.entry in CLOSE_BREAKOUT and confirmed and c <= P * (1 + p.close_chase):
+                cands.append((rs[t - 1, j], j, "breakout", c, low_p * (1 - p.stop_pad), True, False))
+        for j, (P, b, armed, trig, stop_lvl) in list(pending.items()):
             if t <= b:
                 continue
-            c, l, v = Cn[t, j], Ln[t, j], Vn[t, j]
+            c, o, h, l, v = Cn[t, j], On[t, j], Hn[t, j], Ln[t, j], Vn[t, j]
             if np.isnan(c) or t - b > p.pb_window or c < P * (1 - p.pb_below):
+                del pending[j]
+                continue
+            if p.entry in CONFIRM_PULLBACK and 0 <= armed < t <= armed + p.arm_days and h > trig and o <= trig * (1 + p.chase_max):
+                cands.append((rs[t - 1, j], j, "pullback", max(o, trig), stop_lvl, True, True))   # next-day strength confirms
                 del pending[j]
                 continue
             if l <= P * (1 + p.pb_above) and v < v50[t - 1, j] and c > s50[t, j]:
                 mas = [m for m in (s10[t, j], s20[t, j]) if abs(m / P - 1) <= p.ma_tol]
-                if mas:
-                    cands.append((rs[t - 1, j], j, "pullback", c, min([P, l] + mas) * (1 - p.stop_pad), True))
+                if mas and p.entry in TOUCH_PULLBACK:
+                    cands.append((rs[t - 1, j], j, "pullback", c, min([P, l] + mas) * (1 - p.stop_pad), True, False))
                     del pending[j]
+                elif mas:                                    # arm a buy-stop above this quiet pullback day's high
+                    pending[j] = [P, b, t, h, min([P, l] + mas) * (1 - p.stop_pad)]
         # ---- entries (sized on yesterday's equity)
         mv = sum(ps.shares * last_px.get(j, ps.entry) for j, ps in positions.items())
-        for _, j, kind, px, stop, confirmed in sorted(cands, key=lambda x: -np.nan_to_num(x[0])):
+        for _, j, kind, px, stop, confirmed, intraday in sorted(cands, key=lambda x: -np.nan_to_num(x[0])):
             if j in positions or not allowed:
                 continue
             entry = px * (1 + p.cost)
@@ -299,7 +319,7 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
             positions[j] = Pos(t, entry, shares, stop, r, kind, entry * (1 + p.target_r * r) if p.target_r else None)
             last_px[j] = c
             mv += shares * c
-            if kind == "breakout":                           # bought intraday: the rest of the day still counts
+            if intraday:                                     # bought intraday: the rest of the day still counts
                 if l <= stop:
                     close_out(j, t, stop * (1 - p.cost), "stop")
                     mv -= shares * c
@@ -309,7 +329,7 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
         eq_last = cash + sum(ps.shares * last_px.get(j, ps.entry) for j, ps in positions.items())
         equity.append(eq_last)
         gross.append(1.0 - cash / eq_last)
-    idx = dates[max(i0, 1):]
+    idx = dates[max(i0, 1):t_end]
     eqs = pd.Series(equity, index=idx)
     ret = eqs.pct_change().fillna(eqs.iloc[0] - 1.0)
     tr = pd.DataFrame(trades, columns=["symbol", "entry_date", "exit_date", "kind", "entry", "exit", "r", "reason", "days"])
