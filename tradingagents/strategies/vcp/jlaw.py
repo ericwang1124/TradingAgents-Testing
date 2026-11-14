@@ -214,7 +214,8 @@ class Pos:
 
 
 def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, float, float]]], spy: pd.Series,
-             spy_vol: pd.Series, rf: pd.Series, p: JParams) -> Dict[str, object]:
+             spy_vol: pd.Series, rf: pd.Series, p: JParams, risk_mult: Optional[np.ndarray] = None) -> Dict[str, object]:
+    """``risk_mult`` (one value per session, read with a one-day lag) scales the risk of new trades; 0 blocks them."""
     C = ind["C"]
     dates, syms = C.index, np.array(C.columns)
     Cn, On, Hn, Ln, Vn = (ind[k].to_numpy() for k in ("C", "O", "H", "L", "V"))
@@ -268,7 +269,9 @@ def simulate(ind: Dict[str, pd.DataFrame], by_day: Dict[int, List[Tuple[int, flo
             mult *= 0.5
         if p.dist_days and dist[t - 1] >= 4:
             mult *= 0.5
-        allowed = (not p.spy200) or bool(spy_ok[t - 1])
+        if risk_mult is not None:
+            mult *= float(risk_mult[t - 1])
+        allowed = ((not p.spy200) or bool(spy_ok[t - 1])) and mult > 0
         cands = []                                           # (rs, j, kind, price, stop, confirmed, bought intraday)
         for j, P, low_p in by_day.get(t - 1, ()):
             c, o, h, v = Cn[t, j], On[t, j], Hn[t, j], Vn[t, j]

@@ -148,15 +148,20 @@ def prefilter(monthly_raw: pd.DataFrame) -> List[str]:
     return sorted(monthly_raw.loc[(monthly_raw["close"] >= PRE_PRICE) & (dv >= PRE_DV), "symbol"].unique())
 
 
-def duplicate_symbols(monthly: pd.DataFrame, min_months: int = 3) -> Set[str]:
+def duplicate_pairs(monthly: pd.DataFrame, min_months: int = 3) -> List[tuple]:
     """Alpaca serves a renamed company's whole history under its current ticker and the old-ticker
     years again under the old one (XYZ holds SQ's years, ELV holds ANTM's). Two symbols with the same
-    unadjusted close and volume in at least ``min_months`` months are one security: the shorter history goes."""
+    unadjusted close and volume in at least ``min_months`` months are one security.
+    Returns (kept, dropped) pairs: the shorter history is the one dropped."""
     n = monthly.groupby("symbol").size()
     m = monthly.merge(monthly, on=["date", "close", "volume"], suffixes=("_a", "_b"))
     m = m[m["symbol_a"] < m["symbol_b"]]
     pairs = m.groupby(["symbol_a", "symbol_b"]).size()
-    return {a if (n[a], a) < (n[b], b) else b for (a, b), k in pairs.items() if k >= min_months}
+    return [((b, a) if (n[a], a) < (n[b], b) else (a, b)) for (a, b), k in pairs.items() if k >= min_months]
+
+
+def duplicate_symbols(monthly: pd.DataFrame, min_months: int = 3) -> Set[str]:
+    return {dropped for _, dropped in duplicate_pairs(monthly, min_months)}
 
 
 def brute_force_symbols(known: Set[str], max_len: int = 4) -> List[str]:

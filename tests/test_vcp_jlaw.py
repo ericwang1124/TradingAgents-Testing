@@ -122,3 +122,30 @@ def test_flex_score_and_bounds():
     s = jf.score(F)
     assert s["total"].tolist() == [7.0, 0.0]
     assert jf.bounded(F).tolist() == [True, False]                     # second base is only 10 sessions long
+
+
+def test_risk_multiplier_scales_and_blocks_new_trades():
+    ind, idx, spy, vol, rf = _ind()
+    p = jl.JParams(entry="close_breakout", start=str(idx[1].date()))
+    full = jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p)
+    half = jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p, risk_mult=np.full(len(idx), 0.5))
+    none = jl.simulate(ind, {4: [(0, 58.5, 56.0)]}, spy, vol, rf, p, risk_mult=np.zeros(len(idx)))
+    assert abs(half["gross"].loc[idx[5]] / full["gross"].loc[idx[5]] - 0.5) < 0.01
+    assert len(none["trades"]) == 0 and none["gross"].max() == 0
+
+
+def test_leader_news_items_score_reports_guidance_and_analysts(monkeypatch):
+    from tradingagents.strategies.vcp import leaders, news
+
+    recs = {"AAA": {"windows": [], "items": [["2024-01-10T21:05:00Z", "AAA Q4 EPS $1.10 Beats $1.00 Estimate, Sales $2.0B Beat $1.9B Estimate"],
+                                              ["2024-01-10T21:06:00Z", "AAA Raises FY24 Sales Guidance From $8B To $9B"],
+                                              ["2024-01-11T12:00:00Z", "Firm A Maintains Buy on AAA, Raises Price Target to $50"],
+                                              ["2024-01-11T12:10:00Z", "Firm B Maintains Buy on AAA, Raises Price Target to $55"],
+                                              ["2024-01-11T12:20:00Z", "Firm C Upgrades AAA to Buy"]]},
+            "BBB": {"windows": [], "items": [["2024-01-10T21:05:00Z", "BBB Q4 EPS $0.10 Misses $0.20 Estimate, Sales $1.0B Beat $0.9B Estimate"]]},
+            "CCC": {"windows": [], "items": []}}
+    monkeypatch.setattr(news, "load", lambda col: recs[col])
+    ev = pd.DataFrame({"col": ["AAA", "BBB", "CCC", "AAA"], "day": pd.to_datetime(["2024-01-20", "2024-01-20", "2024-01-20", "2024-01-10"])})
+    it = leaders.news_items(ev)
+    assert it["earnings"].tolist() == [1.0, 0.0, 0.0, 0.0]            # beat both / one beat and one miss / no report / not yet published
+    assert it["guidance"].tolist() == [1.0, 0.0, 0.0, 0.0] and it["analysts"].tolist() == [1.0, 0.0, 0.0, 0.0]
