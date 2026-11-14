@@ -80,3 +80,42 @@ Does the score rank setups? (development only, close-breakout entry)
 | score: 50-75%      |    -0.6  |   -0.46 |     -2.5  |         1.56 |       39 |   28.21 |        7.99 |        -4.27 |   -0.13 |      17.26 |      -0.74 |            -1.69 |
 | score: top quarter |     0.98 |    2.35 |     -3.82 |         5.91 |       59 |   45.76 |       14.85 |        -4.88 |    0.65 |      24    |       2.39 |             1.84 |
 
+## Holdout 2022-2026 (run once)
+
+The result is the row **C close breakout**; the others are for information.
+
+|                                       |   Sharpe |   ann % |   maxDD % |   invested % |   trades |   win % |   avg win % |   avg loss % |   avg R |   avg days |   t(avg R) |   alpha t vs SPY |
+|:--------------------------------------|---------:|--------:|----------:|-------------:|---------:|--------:|------------:|-------------:|--------:|-----------:|-----------:|-----------------:|
+| A touch pullback                      |     0.41 |    1.14 |     -4.87 |         6.26 |       96 |   37.5  |       12.54 |        -4.19 |    0.48 |      15.77 |       1.67 |             0.65 |
+| B confirmed pullback                  |     0.88 |    2.13 |     -2.38 |         5.7  |       76 |   40.79 |       13.56 |        -4.79 |    0.55 |      18.26 |       1.81 |             1.71 |
+| C close breakout                      |     0.21 |    0.28 |     -2.37 |         2.85 |       57 |   45.61 |       11.08 |        -5.96 |    0.34 |      19.53 |       1.37 |             0.27 |
+| D close breakout + confirmed pullback |     0.45 |    1.05 |     -3.28 |         5.62 |       98 |   43.88 |       11.85 |        -5.69 |    0.33 |      18.59 |       1.68 |             0.74 |
+| fixed rules (vcp.jlaw primary)        |     0.24 |    0.8  |     -4.33 |         9.83 |      172 |   35.47 |       11.34 |        -4.3  |    0.27 |      15.63 |       1.55 |             0.23 |
+| SPY buy and hold                      |     0.49 |    7.29 |    -24.95 |       100    |      nan |  nan    |      nan    |       nan    |  nan    |     nan    |     nan    |           nan    |
+
+## Whole period 2017-2026, for reference
+
+|                                |   Sharpe |   ann % |   maxDD % |   invested % |   trades |   win % |   avg win % |   avg loss % |   avg R |   avg days |   t(avg R) |   alpha t vs SPY |
+|:-------------------------------|---------:|--------:|----------:|-------------:|---------:|--------:|------------:|-------------:|--------:|-----------:|-----------:|-----------------:|
+| C close breakout               |     0.68 |    1.33 |     -4.07 |         4.4  |      116 |   45.69 |       13    |        -5.41 |    0.5  |      21.8  |       2.7  |             1.76 |
+| fixed rules (vcp.jlaw primary) |     0.17 |    0.59 |     -9.67 |        10.11 |      341 |   30.5  |       11.51 |        -4.13 |    0.16 |      15.08 |       1.35 |            -0.1  |
+| SPY buy and hold               |     0.73 |   12.23 |    -33.89 |       100    |      nan |  nan    |      nan    |       nan    |  nan    |     nan    |     nan    |           nan    |
+
+Holdout trades of the frozen candidate by entry year:
+
+|   entry_date |   trades |   win_pct |   avg_R |
+|-------------:|---------:|----------:|--------:|
+|         2022 |        7 |     57.14 |    0.19 |
+|         2023 |       17 |     58.82 |    0.83 |
+|         2024 |       13 |     23.08 |    0.1  |
+|         2025 |       13 |     30.77 |    0.23 |
+|         2026 |        7 |     71.43 |   -0.04 |
+
+## Added to the live core (whole-period stream, walk-forward weights)
+
+|                 |   2019-26 |   2021-26 |   2024-05+ |
+|:----------------|----------:|----------:|-----------:|
+| core (live)     |     1.019 |     0.835 |      1.054 |
+| core + VCP      |     1.024 |     0.82  |      1.036 |
+| VCP weight 2026 |     0.032 |   nan     |    nan     |
+
