@@ -77,6 +77,11 @@ def strategy_positions(C: pd.DataFrame, H: pd.Series, L: pd.Series, sessions: pd
     P["MR: after 3 down days, exit on up close"] = _one(idx, "SPY", _hold_until(down3, r["SPY"] > 0))
     ibs = (spy - L) / (H - L).replace(0, np.nan)
     P["MR: IBS<0.2, hold 1 day"] = _one(idx, "SPY", (ibs < 0.2).astype(float))
+    # slow dip-buying (added 2026-11-14, see reports/综合夏普_提升检验.md): Wilder RSI(30) < 35 buy, > 65 sell
+    for t in ("SPY", "QQQ", "IWM"):
+        rs30 = _rsi(C[t], 30)
+        rs30[:90] = np.nan
+        P[f"RSI(30)<35 buy, >65 sell: {t}"] = _one(idx, t, _hold_until(rs30 < 35, rs30 > 65))
     for t, name in (("TLT", "long bonds TLT"), ("IEF", "long bonds IEF"), ("GLD", "long gold"),
                     ("DBC", "long commodities DBC"), ("UUP", "long US dollar UUP"), ("HYG", "long high yield HYG"),
                     ("USO", "long oil USO"), ("FXE", "long euro FXE"), ("FXY", "long yen FXY")):

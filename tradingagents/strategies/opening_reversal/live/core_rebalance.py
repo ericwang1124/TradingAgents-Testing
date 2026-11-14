@@ -1,7 +1,7 @@
 """End-of-day rebalance of the core diversified portfolio on Alpaca paper.
 
 Weights are refit once a year (``core-weights``) on the full history and saved next to this file;
-the daily run only needs ~2 years of daily bars to compute today's positions and strategy scales.
+the daily run downloads 5 years of daily bars (RSI(30) holds can last ~2 years) to compute today's positions and strategy scales.
 The run starts ~15:12 ET, waits until 15 minutes before the close, takes the latest trades as
 today's close, and sends ordinary market orders; any part left unfilled after a minute is sent once
 more. (Market-on-close orders were tried first: on 2026-11-13 the paper account let 10 of 13 expire
@@ -33,7 +33,7 @@ CORE_FRACTION = 1.0          # share of account equity run by the core book (bef
 ORDER_PREFIX = "core"
 
 
-def _history_yahoo(years: str = "2y") -> Dict[str, pd.DataFrame]:
+def _history_yahoo(years: str = "5y") -> Dict[str, pd.DataFrame]:
     import yfinance as yf
 
     out = {}

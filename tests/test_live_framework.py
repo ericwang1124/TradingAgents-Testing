@@ -93,3 +93,21 @@ def test_core_execute_resends_unfilled_part_once():
     out = execute(c, [{"symbol": "TLT", "side": "buy", "qty": 81}], pd.Timestamp("2026-11-16").date())
     assert [s[1] for s in c.sent] == [81, 41] and all(s[3] == "day" for s in c.sent)
     assert c.cancelled == ["o0"] and out[0]["filled_qty"] == 81
+
+
+def test_addon_qty_caps_by_buying_power():
+    assert addon.addon_qty(100_000, {"daytrading_buying_power": "400000"}, 500.0) == int(addon.ADDON_NOTIONAL * 100_000 // 500)
+    assert addon.addon_qty(100_000, {"daytrading_buying_power": "100000"}, 500.0) == int(addon.BP_USE * 100_000 // 500)
+    assert addon.addon_qty(100_000, {"daytrading_buying_power": "0", "buying_power": "50000"}, 500.0) == 90
+    assert addon.addon_qty(100_000, {}, 500.0, size=0.0) == 0
+
+
+def test_core_has_rsi30_dip_buying_on_spy_qqq_iwm():
+    idx = pd.bdate_range("2020-01-01", periods=400)
+    path = np.r_[np.linspace(100, 70, 150), np.linspace(70, 130, 250)]     # long slide, then recovery
+    C = pd.DataFrame({t: path for t in cp.UNIVERSE}, index=idx)
+    P = cp.strategy_positions(C, C["SPY"], C["SPY"], idx)
+    for t in ("SPY", "QQQ", "IWM"):
+        pos = P[f"RSI(30)<35 buy, >65 sell: {t}"][t]
+        assert pos.iloc[:90].sum() == 0                     # warm-up
+        assert pos.max() == 1.0 and pos.iloc[-1] == 0.0     # bought in the slide, sold in the recovery

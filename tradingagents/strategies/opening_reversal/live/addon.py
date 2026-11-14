@@ -2,9 +2,12 @@
 
 At 10:00 ET: efficiency = |P(10:00) - open| / (path length of 1-minute closes 09:30-09:59). If it is at
 or above this year's threshold (2/3 quantile of past sessions, see addon_params.json) and the
-first 30 minutes were up, buy SPY for ADDON_NOTIONAL x equity and sell the same quantity at
-EXIT_TIME. Runs only when the morning decision is GO. (Backtest: SPY 2021-26 out of sample 0.86
-Sharpe 10:00->12:00 both sides, long side 5.9 bp/trade, t = 2.3.)
+first 30 minutes were up, buy SPY for ADDON_NOTIONAL x equity (capped by day-trading buying power)
+and sell the same quantity at EXIT_TIME. Runs only when the morning decision is GO. (Backtest: SPY
+2021-26 long side 5.9 bp/trade, t = 2.3. Size raised from 1x to 1.5x on 2026-11-14: the add-on is
+nearly uncorrelated with the core, so the combined Sharpe rises with its size; see
+reports/综合夏普_提升检验.md. The short side through SH was tested and dropped: after SH's wider spread
+it averaged -0.6 bp/trade.)
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ from . import journal
 from .alpaca_trading import AlpacaClient
 
 PARAMS_PATH = Path(__file__).with_name("addon_params.json")
-ADDON_NOTIONAL = 1.0           # x account equity
+ADDON_NOTIONAL = 1.5           # x account equity
+BP_USE = 0.9                   # never use more than this share of day-trading buying power
 ENTRY_TIME = time(10, 0, 5)
 EXIT_TIME = time(11, 55)       # backtest exits at 12:00; 11:55 keeps the run inside a 2-hour window
 SYMBOL = "SPY"
@@ -43,6 +47,15 @@ def efficiency(bars: pd.DataFrame) -> Dict[str, float]:
 
 def load_threshold() -> float:
     return float(json.loads(PARAMS_PATH.read_text())["efficiency_threshold"])
+
+
+def addon_qty(equity: float, acct: Dict[str, Any], price: float, size: float = 1.0) -> int:
+    """Whole SPY shares for ADDON_NOTIONAL x equity x size, capped by day-trading buying power."""
+    want = ADDON_NOTIONAL * equity * size
+    bp = float(acct.get("daytrading_buying_power") or 0.0) or float(acct.get("buying_power") or 0.0)
+    if bp > 0:
+        want = min(want, BP_USE * bp)
+    return max(int(want // price), 0)
 
 
 def _sleep_until(ts: pd.Timestamp) -> None:
@@ -81,19 +94,28 @@ def run(day: date, client: Optional[AlpacaClient] = None, dry_run: bool = False)
     if not sig["take"]:
         log("no entry (efficiency below threshold or first 30 minutes not up)")
         return rec
-    equity = float(client.account()["equity"])
+    acct = client.account()
+    equity = float(acct["equity"])
     price = client.latest_trade_price(SYMBOL)
-    qty = int(ADDON_NOTIONAL * equity * float(decision.get("size", 1.0)) // price)
+    qty = addon_qty(equity, acct, price, float(decision.get("size", 1.0)))
     rec["plan"] = {"qty": qty, "ref_price": price, "notional": round(qty * price, 2)}
     if dry_run or qty <= 0:
         log("dry run or zero size; no order", **rec["plan"])
         return rec
     buy = client.wait_filled(client.submit_order(SYMBOL, qty, "buy", client_order_id=f"{ORDER_PREFIX}-{day:%Y%m%d}-entry")["id"], 60)
     if buy["status"] != "filled":
+        try:
+            client.cancel_order(buy["id"])
+        except Exception:
+            pass
+        buy = client.get_order(buy["id"])
+    filled = int(float(buy.get("filled_qty") or 0))
+    if filled <= 0:
         log("entry not filled", status=buy["status"])
         return rec
     rec["traded"] = True
-    rec["entry_fill"] = {"price": float(buy["filled_avg_price"]), "qty": int(float(buy["filled_qty"])), "time": buy["filled_at"]}
+    rec["entry_fill"] = {"price": float(buy["filled_avg_price"]), "qty": filled, "time": buy.get("filled_at"),
+                         "status": buy["status"]}
     log("entry filled", **rec["entry_fill"])
     _sleep_until(pd.Timestamp(datetime.combine(day, EXIT_TIME), tz=NY))
     sell = client.wait_filled(client.submit_order(SYMBOL, rec["entry_fill"]["qty"], "sell",
