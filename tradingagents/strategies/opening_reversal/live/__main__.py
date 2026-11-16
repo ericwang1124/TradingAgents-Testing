@@ -31,10 +31,10 @@ def _today() -> date:
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name in ("briefing", "run", "flatten", "evaluate", "addon", "core"):
+    for name in ("briefing", "run", "flatten", "evaluate", "addon", "core", "leaps"):
         s = sub.add_parser(name)
         s.add_argument("--date", type=date.fromisoformat, default=None)
-        if name in ("run", "addon", "core"):
+        if name in ("run", "addon", "core", "leaps"):
             s.add_argument("--dry-run", action="store_true", help="detect and plan, but send no orders")
         if name == "evaluate":
             s.add_argument("--force", action="store_true")
@@ -105,6 +105,11 @@ def main(argv=None) -> None:
         rec = rebalance(day, dry_run=args.dry_run)
         print(json.dumps({k: rec.get(k) for k in ("gross_exposure", "order_type", "orders", "submitted", "unfilled", "skipped")},
                          indent=2, default=str))
+    elif args.cmd == "leaps":
+        from .leaps_sleeve import run as leaps_run
+
+        rec = leaps_run(day, dry_run=args.dry_run)
+        print(json.dumps({k: rec.get(k) for k in ("signal", "exits", "entry", "open_after", "skipped")}, indent=2, default=str))
     elif args.cmd == "core-weights":
         from .core_rebalance import save_weights
 

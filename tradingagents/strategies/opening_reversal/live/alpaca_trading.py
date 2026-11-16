@@ -100,6 +100,20 @@ class AlpacaClient:
             "strike_price_gte": f"{strike_lo:.2f}", "strike_price_lte": f"{strike_hi:.2f}", "limit": 100})
         return [c for c in payload.get("option_contracts", []) if c.get("tradable")]
 
+    def call_contracts(self, underlying: str, exp_from: date, exp_to: date, strike_lo: float, strike_hi: float) -> List[dict]:
+        out, tok = [], None
+        while True:
+            params = {"underlying_symbols": underlying, "type": "call", "expiration_date_gte": exp_from.isoformat(),
+                      "expiration_date_lte": exp_to.isoformat(), "strike_price_gte": f"{strike_lo:.2f}",
+                      "strike_price_lte": f"{strike_hi:.2f}", "limit": 1000}
+            if tok:
+                params["page_token"] = tok
+            payload = self._trade("GET", "/v2/options/contracts", params=params)
+            out += [c for c in payload.get("option_contracts", []) if c.get("tradable")]
+            tok = payload.get("next_page_token")
+            if not tok:
+                return out
+
     def option_quote(self, symbol: str) -> Dict[str, float]:
         snap = self._data("/v1beta1/options/snapshots", symbols=symbol, feed="indicative")
         q = (snap.get("snapshots") or {}).get(symbol, {}).get("latestQuote") or {}

@@ -60,6 +60,8 @@ def summary_table() -> pd.DataFrame:
         live = (ev or {}).get("live_signal")
         ad, adr = (ev or {}).get("addon") or {}, journal.read(day, "addon") or {}
         core = journal.read(day, "core") or {}
+        lp = journal.read(day, "leaps") or {}
+        lsig, lent = lp.get("signal") or {}, lp.get("entry") or {}
         rows.append({
             "date": day.isoformat(),
             "decision": d.get("decision", "—"),
@@ -73,6 +75,10 @@ def summary_table() -> pd.DataFrame:
             "core_gross": core.get("gross_exposure"),
             "core_orders": len(core.get("orders", [])),
             "core_unfilled": len(core.get("unfilled", [])),
+            "leaps_signal": lsig.get("signal"),
+            "leaps_bought": int(((lent.get("order") or {}).get("filled")) or 0),
+            "leaps_sold": int(sum(((x.get("order") or {}).get("filled") or 0) for x in lp.get("exits", []))),
+            "leaps_open": len(lp.get("open_after") or {}) if lp else np.nan,
             "fade_signal": bool(live),
             "fade_shadow_R": live["r_multiple"] if live else np.nan,
             "traded": e.get("traded", False),
