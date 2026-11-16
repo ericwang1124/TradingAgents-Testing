@@ -1,0 +1,303 @@
+{
+  "date": "2026-11-16",
+  "run_at": "2026-11-16T15:45:00.000840-05:00",
+  "equity": 100010.36,
+  "order_type": "market",
+  "exposures": {
+    "BTC-USD": 0.0462,
+    "DBC": 0.0445,
+    "GLD": 0.0479,
+    "HYG": 0.1325,
+    "IEF": 0.0808,
+    "IWM": 0.0252,
+    "QQQ": 0.049,
+    "RSP": 0.0566,
+    "SPY": 0.9778,
+    "SVXY": 0.0156,
+    "TLT": 0.0581,
+    "UUP": 0.0611,
+    "XLK": 0.0446
+  },
+  "targets_usd": {
+    "IBIT": 4622.18,
+    "DBC": 4451.15,
+    "GLD": 4787.65,
+    "HYG": 13250.27,
+    "IEF": 8080.82,
+    "IWM": 2523.16,
+    "QQQ": 4902.04,
+    "RSP": 5656.72,
+    "SPY": 97790.73,
+    "SVXY": 1563.37,
+    "TLT": 5815.2,
+    "UUP": 6108.11,
+    "XLK": 4461.17
+  },
+  "gross_exposure": 1.64,
+  "orders": [
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 9,
+      "est_usd": 812.79
+    },
+    {
+      "symbol": "DBC",
+      "side": "buy",
+      "qty": 147,
+      "est_usd": 4443.07
+    },
+    {
+      "symbol": "GLD",
+      "side": "buy",
+      "qty": 13,
+      "est_usd": 4589.52
+    },
+    {
+      "symbol": "HYG",
+      "side": "buy",
+      "qty": 27,
+      "est_usd": 2072.93
+    },
+    {
+      "symbol": "IBIT",
+      "side": "buy",
+      "qty": 125,
+      "est_usd": 4592.5
+    },
+    {
+      "symbol": "IWM",
+      "side": "buy",
+      "qty": 9,
+      "est_usd": 2450.52
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "qty": 7,
+      "est_usd": 4628.61
+    },
+    {
+      "symbol": "RSP",
+      "side": "buy",
+      "qty": 25,
+      "est_usd": 5466.5
+    },
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "qty": 132,
+      "est_usd": 97528.2
+    },
+    {
+      "symbol": "SVXY",
+      "side": "buy",
+      "qty": 28,
+      "est_usd": 1550.08
+    },
+    {
+      "symbol": "TLT",
+      "side": "buy",
+      "qty": 73,
+      "est_usd": 5803.86
+    },
+    {
+      "symbol": "UUP",
+      "side": "buy",
+      "qty": 35,
+      "est_usd": 1034.08
+    },
+    {
+      "symbol": "XLK",
+      "side": "buy",
+      "qty": 27,
+      "est_usd": 4438.53
+    }
+  ],
+  "submitted": [
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 9,
+      "filled_qty": 9.0,
+      "attempts": [
+        {
+          "id": "fb6233e8-a801-4af9-b31e-0560b567e465",
+          "status": "filled",
+          "filled_qty": 9.0,
+          "avg_price": "90.31"
+        }
+      ]
+    },
+    {
+      "symbol": "DBC",
+      "side": "buy",
+      "qty": 147,
+      "filled_qty": 147.0,
+      "attempts": [
+        {
+          "id": "1dc4438e-9dcb-414e-a716-2a96758801c2",
+          "status": "filled",
+          "filled_qty": 147.0,
+          "avg_price": "30.22"
+        }
+      ]
+    },
+    {
+      "symbol": "GLD",
+      "side": "buy",
+      "qty": 13,
+      "filled_qty": 13.0,
+      "attempts": [
+        {
+          "id": "e076b938-9526-4b15-8295-30c4b0b5c059",
+          "status": "filled",
+          "filled_qty": 13.0,
+          "avg_price": "353.06"
+        }
+      ]
+    },
+    {
+      "symbol": "HYG",
+      "side": "buy",
+      "qty": 27,
+      "filled_qty": 27.0,
+      "attempts": [
+        {
+          "id": "c48e4643-93b6-4dfc-be6e-c5d135be7c52",
+          "status": "filled",
+          "filled_qty": 27.0,
+          "avg_price": "76.78"
+        }
+      ]
+    },
+    {
+      "symbol": "IBIT",
+      "side": "buy",
+      "qty": 125,
+      "filled_qty": 125.0,
+      "attempts": [
+        {
+          "id": "3f14fa53-83a1-4dca-afcc-18f22e7e0f96",
+          "status": "filled",
+          "filled_qty": 125.0,
+          "avg_price": "36.76696"
+        }
+      ]
+    },
+    {
+      "symbol": "IWM",
+      "side": "buy",
+      "qty": 9,
+      "filled_qty": 9.0,
+      "attempts": [
+        {
+          "id": "923627ae-b68a-481f-987c-3a92c119ed31",
+          "status": "filled",
+          "filled_qty": 9.0,
+          "avg_price": "272.37"
+        }
+      ]
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "qty": 7,
+      "filled_qty": 7.0,
+      "attempts": [
+        {
+          "id": "5c7cd724-10c1-4a79-814e-132d28d6a18b",
+          "status": "filled",
+          "filled_qty": 7.0,
+          "avg_price": "661.49"
+        }
+      ]
+    },
+    {
+      "symbol": "RSP",
+      "side": "buy",
+      "qty": 25,
+      "filled_qty": 25.0,
+      "attempts": [
+        {
+          "id": "a7faad74-fa5b-4a13-85ba-f25827802898",
+          "status": "filled",
+          "filled_qty": 25.0,
+          "avg_price": "218.71"
+        }
+      ]
+    },
+    {
+      "symbol": "SPY",
+      "side": "buy",
+      "qty": 132,
+      "filled_qty": 132.0,
+      "attempts": [
+        {
+          "id": "b736eda8-0b1f-44c2-ac27-7efa8ae56a37",
+          "status": "filled",
+          "filled_qty": 132.0,
+          "avg_price": "738.987727"
+        }
+      ]
+    },
+    {
+      "symbol": "SVXY",
+      "side": "buy",
+      "qty": 28,
+      "filled_qty": 28.0,
+      "attempts": [
+        {
+          "id": "f62c237f-0341-49b0-a4f5-83b6c3563002",
+          "status": "filled",
+          "filled_qty": 28.0,
+          "avg_price": "55.368214"
+        }
+      ]
+    },
+    {
+      "symbol": "TLT",
+      "side": "buy",
+      "qty": 73,
+      "filled_qty": 73.0,
+      "attempts": [
+        {
+          "id": "34376623-1cab-4e9b-b6be-8f837d940aa2",
+          "status": "filled",
+          "filled_qty": 73.0,
+          "avg_price": "79.51"
+        }
+      ]
+    },
+    {
+      "symbol": "UUP",
+      "side": "buy",
+      "qty": 35,
+      "filled_qty": 35.0,
+      "attempts": [
+        {
+          "id": "1e08a582-b8bf-4024-a586-57d170858b21",
+          "status": "filled",
+          "filled_qty": 35.0,
+          "avg_price": "29.55"
+        }
+      ]
+    },
+    {
+      "symbol": "XLK",
+      "side": "buy",
+      "qty": 27,
+      "filled_qty": 27.0,
+      "attempts": [
+        {
+          "id": "da9e77dd-12c4-4ec3-a99b-c4ad1f1028c7",
+          "status": "filled",
+          "filled_qty": 27.0,
+          "avg_price": "164.51"
+        }
+      ]
+    }
+  ],
+  "dry_run": false,
+  "unfilled": []
+}
