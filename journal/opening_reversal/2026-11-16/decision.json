@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-16",
+  "decision": "GO",
+  "size": 1.0,
+  "confidence": 0.6,
+  "reasons": [
+    "No US release or Fed speaker found for the 10:00-12:00 ET window; no FOMC, CPI, jobs report, monthly opex or megacap earnings; SPY implied gap -0.7%, VIX 19.3. Background only: Bessent pressing Nvidia over China chips, Trump-Xi-Putin meeting set for Nov 19, rate markets pricing a December hike. Default GO."
+  ],
+  "sources": [
+    "https://www.pimco.com/gb/en/insights/fed-pauses-as-rate-recalibration-continues"
+  ],
+  "decided_at": "2026-11-16T08:26:54.168689-05:00"
+}
