@@ -219,7 +219,8 @@ def vcp_and_jlaw(i0_date: str) -> Dict[str, List[Idea]]:
     spy, spy_vol, rf = ctx["mkt"]
     out = {}
     for who, entry in (("Minervini VCP", "close_breakout"), ("J Law pullback", "confirm_pullback")):
-        p = replace(ctx["base"], entry=entry, risk=0.01, max_pos=0.002, throttle=False, dist_days=False, start=i0_date, end=None)
+        # sized so that capital never binds (jlaw.simulate skips positions under 1% of equity, so not below that)
+        p = replace(ctx["base"], entry=entry, risk=0.01, max_pos=0.012, throttle=False, dist_days=False, start=i0_date, end=None)
         tr = jl.simulate(ctx["ind"], by_day, spy, spy_vol, rf, p)["trades"]
         out[who] = tr.assign(who=who)
     return out, ctx["ind"]["C"]
