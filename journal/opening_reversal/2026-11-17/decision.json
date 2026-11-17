@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-17",
+  "decision": "GO",
+  "size": 1.0,
+  "confidence": 0.55,
+  "reasons": [
+    "Retail sales (8:30), Waller on payments (9:10) and industrial production (9:15) all land before the open; no release or Fed speaker confirmed for 10:00-12:00 ET. Cleveland Fed's Hammack (2026 voter) speaks today at an unconfirmed time. No FOMC, CPI, jobs report, opex or megacap earnings today; FOMC minutes and Nvidia earnings come later in the week. VIX 22.9 after SPY -1.9% yesterday; no gap (implied -0.03%). Default GO."
+  ],
+  "sources": [
+    "https://economics.td.com/domains/economics.td.com/documents/reports/bottom-line/tables/2026-11-13/upcoming.htm,https://www.newsquawk.com/headlines/newsquawk-weekly-economic-release-16th---20th-november-2026,https://stockhub.kr/en/insights/macro-weekly-20261116"
+  ],
+  "decided_at": "2026-11-17T08:24:34.197141-05:00"
+}
