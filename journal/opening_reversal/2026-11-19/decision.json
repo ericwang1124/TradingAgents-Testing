@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-19",
+  "decision": "GO",
+  "size": 1.0,
+  "confidence": 0.55,
+  "reasons": [
+    "Only confirmed US release is weekly jobless claims at 8:30, before the open; nothing confirmed for 10:00-12:00 ET. The Trump-Xi-Putin meeting at APEC Shenzhen (Nov 18-19 local time) falls before the US open; headline risk remains. SPY implied gap +1.2% after five sessions down 3.9%, VIX 24.6. No FOMC, CPI, jobs report or opex. Default GO."
+  ],
+  "sources": [
+    "https://www.aljazeera.com/news/2026/11/14/trump-xi-and-putin-to-hold-first-three-way-summit-in-china,https://marketnews.com/weekly-claims-home-sales"
+  ],
+  "decided_at": "2026-11-19T08:25:00.391820-05:00"
+}
