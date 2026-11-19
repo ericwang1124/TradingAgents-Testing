@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-19",
+  "run_at": "2026-11-19T15:45:00.000708-05:00",
+  "equity": 96182.75,
+  "order_type": "market",
+  "exposures": {
+    "BTC-USD": 0.0457,
+    "DBC": 0.0442,
+    "GLD": 0.0461,
+    "HYG": 0.134,
+    "IEF": 0.0821,
+    "IWM": 0.0247,
+    "QQQ": 0.0486,
+    "RSP": 0.0536,
+    "SPY": 0.7049,
+    "SVXY": 0.0153,
+    "TLT": 0.0577,
+    "UUP": 0.0612,
+    "XLK": 0.0452
+  },
+  "targets_usd": {
+    "IBIT": 4397.08,
+    "DBC": 4250.64,
+    "GLD": 4433.12,
+    "HYG": 12886.78,
+    "IEF": 7895.75,
+    "IWM": 2373.52,
+    "QQQ": 4679.05,
+    "RSP": 5159.6,
+    "SPY": 67799.65,
+    "SVXY": 1469.64,
+    "TLT": 5546.81,
+    "UUP": 5883.62,
+    "XLK": 4348.79
+  },
+  "gross_exposure": 1.363,
+  "orders": [
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 3,
+      "est_usd": 272.36
+    },
+    {
+      "symbol": "SPY",
+      "side": "sell",
+      "qty": 37,
+      "est_usd": 26534.55
+    }
+  ],
+  "submitted": [
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 3,
+      "filled_qty": 3.0,
+      "attempts": [
+        {
+          "id": "73432342-d41c-4b7e-95a2-d2456bc9a12c",
+          "status": "filled",
+          "filled_qty": 3.0,
+          "avg_price": "90.78"
+        }
+      ]
+    },
+    {
+      "symbol": "SPY",
+      "side": "sell",
+      "qty": 37,
+      "filled_qty": 37.0,
+      "attempts": [
+        {
+          "id": "264a1bfd-d29a-4563-a0f0-86e116d7b4a9",
+          "status": "filled",
+          "filled_qty": 37.0,
+          "avg_price": "717.15"
+        }
+      ]
+    }
+  ],
+  "dry_run": false,
+  "unfilled": []
+}
