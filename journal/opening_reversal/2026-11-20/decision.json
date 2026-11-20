@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-20",
+  "decision": "GO",
+  "size": 0.75,
+  "confidence": 0.5,
+  "reasons": [
+    "Default GO. UMich final November sentiment (with inflation expectations) is released at 10:00 ET, the moment the add-on decides and enters, so size cut to 0.75. Fed's Waller speaks 8:25 (welcoming remarks, before the open) and Cook at 12:15 (after the 11:55 exit). Monthly opex. SPY premarket -1.0% after -2.0% yesterday; 5-day -5.5%, VIX 28.4; AI/Nvidia-led selloff and S&P losing streak this week. No extreme overnight shock found."
+  ],
+  "sources": [
+    "https://stockanalysis.com/news/consumer-sentiment-rises-november-2026/,https://www.newsquawk.com/headlines/newsquawk-weekly-economic-release-16th---20th-november-2026,https://www.wowt.com/2026/11/17/another-wipeout-hits-wall-street-nvidia-other-jittery-ai-stocks-swing-lower/?outputType=amp,https://thebusinessjournal.com/sp500-losing-streak-nvidia-slides/"
+  ],
+  "decided_at": "2026-11-20T08:23:42.521040-05:00"
+}
