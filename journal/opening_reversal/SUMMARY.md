@@ -1,6 +1,6 @@
 # Forward test journal — core portfolio, intraday add-on, fade (shadow)
 
-Sessions logged: 4; add-on signal days: 0; GO decisions: 3; add-on trades: 0, P&L $0; fade shadow signals: 2, avg +0.99R
+Sessions logged: 5; add-on signal days: 0; GO decisions: 4; add-on trades: 0, P&L $0; fade shadow signals: 3, avg +0.32R
 
 Does Claude's morning decision separate good add-on days from bad ones? (shadow return 10:00 -> 11:55, traded or not)
 
@@ -16,3 +16,4 @@ Does Claude's morning decision separate good add-on days from bad ones? (shadow 
 | 2026-11-16 | GO         |         0.60 | down/vix15-20 |               0.15 | False          |                  nan | False          |             nan |         1.64 |            13 |               0 | False          |              0 |            0 |         0.00 | True          |            0.99 | False    |             nan |
 | 2026-11-17 | GO         |         0.55 | down/vix>=20  |               0.09 | False          |                  nan | False          |             nan |       nan    |             0 |               0 |                |              0 |            0 |       nan    | True          |            0.98 | False    |             nan |
 | 2026-11-19 | GO         |         0.55 | down/vix>=20  |               0.08 | False          |                  nan | False          |             nan |         1.36 |             2 |               0 | False          |              0 |            0 |         0.00 | False         |          nan    | False    |             nan |
+| 2026-11-20 | GO         |         0.50 | down/vix>=20  |               0.19 | False          |                  nan | False          |             nan |         2.00 |             8 |               0 | False          |              0 |            0 |         0.00 | True          |           -1.02 | False    |             nan |

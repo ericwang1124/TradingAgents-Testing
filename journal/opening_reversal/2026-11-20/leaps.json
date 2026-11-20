@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-20",
+  "dry_run": false,
+  "exits": [],
+  "entry": null,
+  "signal": {
+    "price": 613.25,
+    "prev_close": 645.0399780273438,
+    "return": -0.049283732962666305,
+    "sma200": 682.0986822509766,
+    "drop": true,
+    "uptrend": false,
+    "signal": false,
+    "sessions_since_last_entry": null,
+    "open_positions": 0
+  },
+  "open_after": {}
+}

@@ -1,0 +1,203 @@
+{
+  "date": "2026-11-20",
+  "run_at": "2026-11-20T15:45:00.000525-05:00",
+  "equity": 92407.3,
+  "order_type": "market",
+  "exposures": {
+    "BTC-USD": 0.0427,
+    "DBC": 0.0436,
+    "GLD": 0.043,
+    "HYG": 0.1282,
+    "IEF": 0.0756,
+    "IWM": 0.0229,
+    "QQQ": 0.7252,
+    "RSP": 0.05,
+    "SPY": 0.6979,
+    "SVXY": 0.014,
+    "TLT": 0.0551,
+    "UUP": 0.0591,
+    "XLK": 0.0427
+  },
+  "targets_usd": {
+    "IBIT": 3942.89,
+    "DBC": 4033.4,
+    "GLD": 3971.88,
+    "HYG": 11846.58,
+    "IEF": 6990.14,
+    "IWM": 2117.62,
+    "QQQ": 67016.77,
+    "RSP": 4616.9,
+    "SPY": 64487.19,
+    "SVXY": 1296.55,
+    "TLT": 5088.81,
+    "UUP": 5462.96,
+    "XLK": 3942.91
+  },
+  "gross_exposure": 2.0,
+  "orders": [
+    {
+      "symbol": "DBC",
+      "side": "sell",
+      "qty": 9,
+      "est_usd": 263.84
+    },
+    {
+      "symbol": "HYG",
+      "side": "sell",
+      "qty": 16,
+      "est_usd": 1220.8
+    },
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 10,
+      "est_usd": 916.6
+    },
+    {
+      "symbol": "RSP",
+      "side": "sell",
+      "qty": 2,
+      "est_usd": 415.5
+    },
+    {
+      "symbol": "SPY",
+      "side": "sell",
+      "qty": 1,
+      "est_usd": 690.63
+    },
+    {
+      "symbol": "TLT",
+      "side": "sell",
+      "qty": 10,
+      "est_usd": 814.55
+    },
+    {
+      "symbol": "UUP",
+      "side": "sell",
+      "qty": 21,
+      "est_usd": 622.34
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "qty": 102,
+      "est_usd": 62263.86
+    }
+  ],
+  "submitted": [
+    {
+      "symbol": "DBC",
+      "side": "sell",
+      "qty": 9,
+      "filled_qty": 9.0,
+      "attempts": [
+        {
+          "id": "5f2051f3-26b8-4abb-ac89-715832f517b5",
+          "status": "filled",
+          "filled_qty": 9.0,
+          "avg_price": "29.32"
+        }
+      ]
+    },
+    {
+      "symbol": "HYG",
+      "side": "sell",
+      "qty": 16,
+      "filled_qty": 16.0,
+      "attempts": [
+        {
+          "id": "85e149f8-ed69-4ea1-afe7-7ec915ee3699",
+          "status": "filled",
+          "filled_qty": 16.0,
+          "avg_price": "76.3"
+        }
+      ]
+    },
+    {
+      "symbol": "IEF",
+      "side": "sell",
+      "qty": 10,
+      "filled_qty": 10.0,
+      "attempts": [
+        {
+          "id": "60e772f3-f93d-4827-8f73-cf7e1bb0f219",
+          "status": "filled",
+          "filled_qty": 10.0,
+          "avg_price": "91.623"
+        }
+      ]
+    },
+    {
+      "symbol": "RSP",
+      "side": "sell",
+      "qty": 2,
+      "filled_qty": 2.0,
+      "attempts": [
+        {
+          "id": "546f87b2-5585-4ca7-b76f-90eef9c1724f",
+          "status": "filled",
+          "filled_qty": 2.0,
+          "avg_price": "208.195"
+        }
+      ]
+    },
+    {
+      "symbol": "SPY",
+      "side": "sell",
+      "qty": 1,
+      "filled_qty": 1.0,
+      "attempts": [
+        {
+          "id": "102d2873-3b8b-420b-8750-9f9eae2cc23b",
+          "status": "filled",
+          "filled_qty": 1.0,
+          "avg_price": "692.58"
+        }
+      ]
+    },
+    {
+      "symbol": "TLT",
+      "side": "sell",
+      "qty": 10,
+      "filled_qty": 10.0,
+      "attempts": [
+        {
+          "id": "c8e971f7-0dd2-4e40-8465-85eb2660bbe2",
+          "status": "filled",
+          "filled_qty": 10.0,
+          "avg_price": "81.4"
+        }
+      ]
+    },
+    {
+      "symbol": "UUP",
+      "side": "sell",
+      "qty": 21,
+      "filled_qty": 21.0,
+      "attempts": [
+        {
+          "id": "8183bafd-2117-49cc-97f3-eb401252b79e",
+          "status": "filled",
+          "filled_qty": 21.0,
+          "avg_price": "29.63"
+        }
+      ]
+    },
+    {
+      "symbol": "QQQ",
+      "side": "buy",
+      "qty": 102,
+      "filled_qty": 102.0,
+      "attempts": [
+        {
+          "id": "add0aa75-0a42-4fb3-af8e-026a6a6632f7",
+          "status": "filled",
+          "filled_qty": 102.0,
+          "avg_price": "613"
+        }
+      ]
+    }
+  ],
+  "dry_run": false,
+  "unfilled": []
+}
