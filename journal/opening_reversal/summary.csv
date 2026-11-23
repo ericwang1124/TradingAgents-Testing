@@ -4,3 +4,4 @@ date,decision,confidence,regime,addon_efficiency,addon_signal,addon_shadow_ret_%
 2026-11-17,GO,0.55,down/vix>=20,0.08759831513028762,False,,False,,,0,0,,0,0,,True,0.984579918447925,False,
 2026-11-19,GO,0.55,down/vix>=20,0.07831309705646623,False,,False,,1.363,2,0,False,0,0,0.0,False,,False,
 2026-11-20,GO,0.5,down/vix>=20,0.1912189672027205,False,,False,,2.0,8,0,False,0,0,0.0,True,-1.024314697542567,False,
+2026-11-23,GO,0.45,down/vix>=20,0.11987270155586999,False,,False,,0.915,8,0,False,0,0,0.0,False,,False,
