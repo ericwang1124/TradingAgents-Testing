@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-23",
+  "decision": "GO",
+  "size": 0.5,
+  "confidence": 0.45,
+  "reasons": [
+    "Default GO, size cut to 0.5 for an extreme volatility regime: S&P/Nasdaq/Dow all in correction after an AI-led rout (Nasdaq -10% last week, biggest since March 2020; VIX closed 35.9 after trading above 40; SPY -3.5% Fri, -8.4% over 5 days, 7.6% below SMA20). SPY premarket +2.5% on a dip-buying rebound, Asian authorities supporting markets; analysts doubt durability. Core already holds ~143% equity exposure (RSI30 entries Friday), so a full 1.5x add-on would push intraday equity exposure near 3x equity. No confirmed major 10:00-12:00 ET release found (Thanksgiving week; calendar search thin). Nvidia CEO change (8-K Nov 12) is background, not new."
+  ],
+  "sources": [
+    "https://finance.yahoo.com/markets/stocks/articles/us-futures-bounce-while-asia-234419517.html,https://www.bloomberg.com/news/articles/2026-11-22/stock-traders-brace-for-more-volatility-after-tech-driven-rout,https://lufkindailynews.com/news_reuters/business/wall-street-futures-rebound-as-battered-ai-stocks-gain-ground/article_e6d9ac41-7498-5fb0-ad1e-4379284b6679.html,https://www.sec.gov/Archives/edgar/data/0001045810/000104581026000082/nvidiaannouncesceotransiti.htm"
+  ],
+  "decided_at": "2026-11-23T08:27:47.658524-05:00"
+}
