@@ -86,6 +86,7 @@ class P:
     use_band: bool = True
     slip: float = SLIP
     last_entry: time = time(15, 0)
+    min_risk_atr: Optional[float] = None   # post-hoc diagnostics only: stop at least this many ATR away
 
 
 # ------------------------------------------------------------------ data
@@ -196,6 +197,7 @@ def room_ok(i: int, side: int, entry: float, target: float, df_day: np.ndarray, 
 def simulate(df: pd.DataFrame, sig: pd.DataFrame, p: P, symbol: str) -> pd.DataFrame:
     o, h, l, c = (df[x].to_numpy() for x in ("open", "high", "low", "close"))
     day = df["day"].to_numpy()
+    atr = df["atr"].to_numpy()
     sh, sl = swing_points(df, p.swing_k)
     L, S = sig["long"].to_numpy(), sig["short"].to_numpy()
     idx = df.index
@@ -208,6 +210,9 @@ def simulate(df: pd.DataFrame, sig: pd.DataFrame, p: P, symbol: str) -> pd.DataF
             continue
         entry_raw = c[i]
         stop = l[i] if side > 0 else h[i]
+        if p.min_risk_atr is not None:
+            gap = p.min_risk_atr * atr[i]
+            stop = min(stop, entry_raw - gap) if side > 0 else max(stop, entry_raw + gap)
         risk = (entry_raw - stop) * side
         if not risk > 0:
             i += 1
