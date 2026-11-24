@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-24",
+  "decision": "NO_GO",
+  "size": 0.0,
+  "confidence": 0.6,
+  "reasons": [
+    "Conference Board consumer confidence (November) is released at 10:00 ET today, the minute the add-on reads its 30-minute signal and enters, so the opening trend it measures can be overturned by the release. Context: Thanksgiving week; inflation data due Wednesday; SPY premarket -1.2% after +4.6% Monday (best day since April 2025) that followed an AI-led correction; VIX 26.6, ATR 2.5%. Shadow return is still logged for the GO/NO_GO comparison."
+  ],
+  "sources": [
+    "https://stockinvest.us/digest/digest-us-premarket-2026-11-24,https://www.cnbc.com/amp/2026/11/23/futures-rally-after-wall-streets-nightmare-week-.html"
+  ],
+  "decided_at": "2026-11-24T08:25:15.834637-05:00"
+}
