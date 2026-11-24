@@ -1,0 +1,24 @@
+{
+  "available": true,
+  "gap_pct": -1.002,
+  "addon": {
+    "available": true,
+    "open": 715.18,
+    "p10": 719.74,
+    "direction": 1.0,
+    "efficiency": 0.26870948733058825,
+    "bars": 30,
+    "threshold": 0.2307692307692027,
+    "take": true,
+    "return_pct": -0.602
+  },
+  "live_signal": {
+    "entry_time": "09:49",
+    "exit_time": "09:51",
+    "entry": 718.12,
+    "stop": 719.5558,
+    "r_multiple": -1.0200261011197618,
+    "exit_reason": "stop"
+  },
+  "original_rules": null
+}
