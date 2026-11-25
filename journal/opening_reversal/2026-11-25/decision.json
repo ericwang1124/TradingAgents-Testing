@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-25",
+  "decision": "GO",
+  "size": 1.0,
+  "confidence": 0.5,
+  "reasons": [
+    "Default GO. Today's main data (October PCE, weekly jobless claims moved up for Thanksgiving, Q3 GDP second estimate) all print at 8:30 ET, before the open; no confirmed major 10:00-12:00 ET release or event found. Futures lower on tech weakness and new tariff plans after last week's correction (S&P -8.6%, Nasdaq -10%); SPY premarket -1.9%, VIX 26.4. Core equity exposure is back to ~0.45 after Monday's exits, so a full-size add-on is within normal risk. Full session today; market closed Thursday, half day Friday."
+  ],
+  "sources": [
+    "https://www.xtb.com/en/market-analysis/economic-calendar-us-pce-data-in-market-focus-25-11-2026,https://invezz.com/news/2026/11/25/nasdaq-futures-today-pce-trump-tariffs-dell-november-25/,https://www.tipranks.com/news/stock-market-today-nov-25-wall-street-braces-for-inflation-data-after-tech-led-selloff"
+  ],
+  "decided_at": "2026-11-25T08:22:03.192237-05:00"
+}
