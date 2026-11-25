@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-25",
+  "dry_run": false,
+  "traded": false,
+  "events": [
+    {
+      "time": "10:00:05",
+      "msg": "signal",
+      "open": 703.155,
+      "p10": 703.57,
+      "direction": 1.0,
+      "efficiency": 0.020219244823389902,
+      "bars": 30,
+      "threshold": 0.2307692307692027,
+      "take": false
+    },
+    {
+      "time": "10:00:05",
+      "msg": "no entry (efficiency below threshold or first 30 minutes not up)"
+    }
+  ],
+  "signal": {
+    "open": 703.155,
+    "p10": 703.57,
+    "direction": 1.0,
+    "efficiency": 0.020219244823389902,
+    "bars": 30,
+    "threshold": 0.2307692307692027,
+    "take": false
+  }
+}
