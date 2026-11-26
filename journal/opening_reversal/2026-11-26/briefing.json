@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-26",
+  "generated_at": "2026-11-26T08:21:33.318484-05:00",
+  "symbol": "SPY",
+  "hard_rules": {
+    "fomc_day": false,
+    "fomc_next_day": false,
+    "cpi_day": false,
+    "jobs_day": false,
+    "half_day": false,
+    "market_closed": true
+  },
+  "hard_no_go": true
+}

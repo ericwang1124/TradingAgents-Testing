@@ -1,0 +1,1 @@
+# 2026-11-26: market closed — no trading

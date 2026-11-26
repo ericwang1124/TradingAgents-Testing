@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-26",
+  "decision": "NO_GO",
+  "size": 0.0,
+  "confidence": 1.0,
+  "reasons": [
+    "Thanksgiving: US markets closed"
+  ],
+  "sources": [
+    "https://www.nyse.com/markets/hours-calendars"
+  ],
+  "decided_at": "2026-11-26T08:21:38.889970-05:00"
+}
