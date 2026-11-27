@@ -1,0 +1,16 @@
+{
+  "available": true,
+  "gap_pct": 1.271,
+  "addon": {
+    "available": true,
+    "open": 725.86,
+    "p10": 720.08,
+    "direction": -1.0,
+    "efficiency": 0.36079900124843306,
+    "bars": 30,
+    "threshold": 0.2307692307692027,
+    "take": false
+  },
+  "live_signal": null,
+  "original_rules": null
+}
