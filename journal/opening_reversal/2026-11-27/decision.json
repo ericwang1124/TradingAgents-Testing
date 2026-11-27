@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-27",
+  "decision": "NO_GO",
+  "size": 0.0,
+  "confidence": 0.9,
+  "reasons": [
+    "Hard rule half_day: Black Friday session closes 13:00 ET, thin holiday liquidity. Premarket SPY 728.97 (+1.7% vs 716.75); no 10:00-12:00 data found."
+  ],
+  "sources": [
+    "https://www.quantvps.com/market-hours/black-friday,https://www.aol.com/articles/stock-market-open-today-know-163134760.html"
+  ],
+  "decided_at": "2026-11-27T08:21:40.643282-05:00"
+}
